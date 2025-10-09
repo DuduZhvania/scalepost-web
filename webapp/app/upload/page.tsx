@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { UploadButton } from "@uploadthing/react";
 // type-only import is fine from a server file
-import type { OurFileRouter } from "@/src/app/api/uploadthing/core";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import "@uploadthing/react/styles.css";
 
 export default function UploadPage() {
