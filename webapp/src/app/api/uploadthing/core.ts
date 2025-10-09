@@ -1,4 +1,3 @@
-// src/app/api/uploadthing/core.ts
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 
 const f = createUploadthing();
@@ -10,5 +9,6 @@ export const ourFileRouter = {
     }),
 } satisfies FileRouter;
 
-// 👇 export this type
 export type OurFileRouter = typeof ourFileRouter;
+
+
