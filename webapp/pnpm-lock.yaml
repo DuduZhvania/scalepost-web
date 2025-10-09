@@ -11,6 +11,9 @@ importers:
       '@uploadthing/react':
         specifier: ^7.3.3
         version: 7.3.3(next@15.5.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(uploadthing@7.7.4(next@15.5.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(tailwindcss@4.1.14))
+      '@uploadthing/shared':
+        specifier: ^7.1.10
+        version: 7.1.10
       next:
         specifier: 15.5.4
         version: 15.5.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
