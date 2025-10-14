@@ -3,11 +3,12 @@ import { mediaAssets } from "@/db/schema/media";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 
-type RouteParams = { params: { id: string } };
-
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    const { id } = await params; // ✅ Added await
 
     const result = await db
       .select()
@@ -32,9 +33,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    const { id } = await params; // ✅ Added await
 
     const asset = await db
       .select({ id: mediaAssets.id })
