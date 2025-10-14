@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface Account {
@@ -206,12 +207,12 @@ export default function CampaignBuilder() {
                 <div className="text-center py-8 text-gray-400">
                   <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-600" />
                   <p className="mb-4">No accounts connected</p>
-                  <a
+                  <Link
                     href="/accounts"
                     className="inline-block px-4 py-2 bg-white text-black rounded-lg font-semibold hover:bg-gray-100 transition"
                   >
                     Connect Accounts
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-3">

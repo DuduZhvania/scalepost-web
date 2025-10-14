@@ -70,6 +70,13 @@ export async function POST(req: NextRequest) {
           scheduledFor = new Date(scheduledFor.getTime() + index * 24 * 60 * 60 * 1000);
         }
 
+        const metadata = clip.metadata 
+          ? (JSON.parse(clip.metadata) as Record<string, unknown>)
+          : {};
+        const hashtags = Array.isArray(metadata.hashtags) 
+          ? JSON.stringify(metadata.hashtags) 
+          : '[]';
+        
         postsToCreate.push({
           campaignId: campaign.id,
           clipId: clip.id,
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
           status: scheduleType === 'immediate' ? 'posting' : 'scheduled',
           scheduledFor,
           caption: clip.title,
-          hashtags: (clip.metadata as any)?.hashtags || [],
+          hashtags,
         });
       }
     }
