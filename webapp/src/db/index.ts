@@ -1,10 +1,9 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 import * as schema from './schema/media';
 
-const dbPath = process.env.DATABASE_URL || './sqlite.db';
-
-const sqlite = new Database(dbPath);
-export const db = drizzle(sqlite, { schema });
+const connectionString = process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/db';
+const sql = neon(connectionString);
+export const db = drizzle(sql, { schema });
 
 export default db;

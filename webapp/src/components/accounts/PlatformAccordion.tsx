@@ -73,7 +73,7 @@ export function PlatformAccordion({ platform, accounts, href }: PlatformAccordio
             role="button"
             aria-label={isExpanded ? 'Collapse preview' : 'Expand preview'}
             tabIndex={0}
-            onKeyDown={(event) => {
+            onKeyDown={(event: React.KeyboardEvent) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 setIsExpanded((prev) => !prev);

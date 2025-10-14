@@ -2,9 +2,9 @@ import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/db/schema.ts",      // or "./src/db/schema/**/*.ts" if split files
+  schema: "./src/db/schema/media.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,  // read from env
+    url: process.env.DATABASE_URL!,
   },
 });

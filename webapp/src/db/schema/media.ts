@@ -1,7 +1,7 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
 
 // Media Assets (uploaded videos)
-export const mediaAssets = sqliteTable('media_assets', {
+export const mediaAssets = pgTable('media_assets', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').notNull().default('anon'),
   fileName: text('file_name').notNull(),
@@ -10,13 +10,13 @@ export const mediaAssets = sqliteTable('media_assets', {
   duration: integer('duration'), // in seconds
   thumbnail: text('thumbnail'),
   status: text('status').notNull().default('uploaded'), // uploaded | processing | ready | failed
-  metadata: text('metadata'), // store width, height, codec, etc. as JSON string
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  metadata: jsonb('metadata'), // store width, height, codec, etc. as JSON
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 // Generated Clips
-export const clips = sqliteTable('clips', {
+export const clips = pgTable('clips', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   mediaAssetId: text('media_asset_id').notNull().references(() => mediaAssets.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().default('anon'),
@@ -29,43 +29,43 @@ export const clips = sqliteTable('clips', {
   duration: integer('duration').notNull(),
   score: integer('score'), // AI virality score (0-100)
   status: text('status').notNull().default('pending'), // pending | ready | posted | failed
-  metadata: text('metadata'), // captions, hashtags, etc. as JSON string
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  metadata: jsonb('metadata'), // captions, hashtags, etc. as JSON
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 // Social Media Accounts
-export const accounts = sqliteTable('accounts', {
+export const accounts = pgTable('accounts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').notNull().default('anon'),
   platform: text('platform').notNull(), // tiktok | youtube | instagram | twitter
   accountName: text('account_name').notNull(),
   accountHandle: text('account_handle'),
-  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-  credentials: text('credentials'), // encrypted tokens as JSON string
-  metadata: text('metadata'), // followers, engagement rate, etc. as JSON string
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  isActive: boolean('is_active').notNull().default(true),
+  credentials: jsonb('credentials'), // encrypted tokens as JSON
+  metadata: jsonb('metadata'), // followers, engagement rate, etc. as JSON
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 // Campaigns (batch posting)
-export const campaigns = sqliteTable('campaigns', {
+export const campaigns = pgTable('campaigns', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').notNull().default('anon'),
   name: text('name').notNull(),
   mediaAssetId: text('media_asset_id').references(() => mediaAssets.id, { onDelete: 'cascade' }),
   status: text('status').notNull().default('draft'), // draft | active | paused | completed
-  targetPlatforms: text('target_platforms').notNull(), // ['tiktok', 'youtube'] as JSON string
-  selectedAccounts: text('selected_accounts').notNull(), // [account_ids] as JSON string
-  scheduledAt: integer('scheduled_at', { mode: 'timestamp' }),
-  completedAt: integer('completed_at', { mode: 'timestamp' }),
-  settings: text('settings'), // posting frequency, rehash settings, etc. as JSON string
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  targetPlatforms: jsonb('target_platforms').notNull(), // ['tiktok', 'youtube'] as JSON
+  selectedAccounts: jsonb('selected_accounts').notNull(), // [account_ids] as JSON
+  scheduledAt: timestamp('scheduled_at'),
+  completedAt: timestamp('completed_at'),
+  settings: jsonb('settings'), // posting frequency, rehash settings, etc. as JSON
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 // Posts (actual distributed content)
-export const posts = sqliteTable('posts', {
+export const posts = pgTable('posts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   campaignId: text('campaign_id').references(() => campaigns.id, { onDelete: 'cascade' }),
   clipId: text('clip_id').notNull().references(() => clips.id, { onDelete: 'cascade' }),
@@ -75,18 +75,18 @@ export const posts = sqliteTable('posts', {
   platformPostId: text('platform_post_id'), // ID from TikTok/YouTube/etc
   postUrl: text('post_url'),
   status: text('status').notNull().default('scheduled'), // scheduled | posting | posted | failed
-  scheduledFor: integer('scheduled_for', { mode: 'timestamp' }),
-  postedAt: integer('posted_at', { mode: 'timestamp' }),
+  scheduledFor: timestamp('scheduled_for'),
+  postedAt: timestamp('posted_at'),
   caption: text('caption'),
-  hashtags: text('hashtags'), // as JSON string
-  analytics: text('analytics'), // views, likes, shares, comments as JSON string
+  hashtags: jsonb('hashtags'), // as JSON
+  analytics: jsonb('analytics'), // views, likes, shares, comments as JSON
   errorMessage: text('error_message'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 // Analytics tracking
-export const analytics = sqliteTable('analytics', {
+export const analytics = pgTable('analytics', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   postId: text('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
   views: integer('views').default(0),
@@ -96,5 +96,5 @@ export const analytics = sqliteTable('analytics', {
   saves: integer('saves').default(0),
   engagementRate: integer('engagement_rate'), // percentage * 100
   watchTime: integer('watch_time'), // average watch time in seconds
-  recordedAt: integer('recorded_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  recordedAt: timestamp('recorded_at').notNull().defaultNow(),
 });

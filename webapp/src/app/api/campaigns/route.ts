@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { campaigns, posts, clips, accounts } from '@/db/schema/media';
-import { eq, inArray, desc } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,7 +71,9 @@ export async function POST(req: NextRequest) {
         }
 
         const metadata = clip.metadata 
-          ? (JSON.parse(clip.metadata) as Record<string, unknown>)
+          ? (typeof clip.metadata === 'string' 
+              ? JSON.parse(clip.metadata) 
+              : clip.metadata) as Record<string, unknown>
           : {};
         const hashtags = Array.isArray(metadata.hashtags) 
           ? JSON.stringify(metadata.hashtags) 

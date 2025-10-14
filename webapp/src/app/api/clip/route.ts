@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { mediaAssets, clips } from '@/db/schema/media';
-import { eq, desc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   try {
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         .update(mediaAssets)
         .set({ status: 'failed', updatedAt: new Date() })
         .where(eq(mediaAssets.id, mediaAssetId));
-    } catch (e) {
+    } catch {
       // Ignore
     }
 

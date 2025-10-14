@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface Account {
@@ -104,7 +105,7 @@ export default function CampaignBuilder() {
       } else {
         alert('Failed to create campaign');
       }
-    } catch (err) {
+    } catch {
       alert('Error creating campaign');
     }
   };
@@ -171,9 +172,9 @@ export default function CampaignBuilder() {
                       }
                     `}
                   >
-                    <div className="w-16 h-16 bg-zinc-700 rounded overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 bg-zinc-700 rounded overflow-hidden flex-shrink-0 relative">
                       {clip.thumbnail ? (
-                        <img src={clip.thumbnail} alt={clip.title} className="w-full h-full object-cover" />
+                        <Image src={clip.thumbnail} alt={clip.title} fill className="object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
                           No preview

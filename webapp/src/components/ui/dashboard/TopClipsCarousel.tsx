@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Video, Eye, TrendingUp, ExternalLink, Send } from 'lucide-react';
 import { PlatformBadge } from '../PlatformBadge';
 import { type TopClip } from '@/hooks/useTopClips';
@@ -48,10 +49,11 @@ export function TopClipsCarousel({ clips }: TopClipsCarouselProps) {
             {/* Thumbnail */}
             <div className="relative aspect-video bg-zinc-950 flex items-center justify-center">
               {clip.thumbnail ? (
-                <img
+                <Image
                   src={clip.thumbnail}
                   alt={clip.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-gray-700">
