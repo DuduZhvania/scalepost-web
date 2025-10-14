@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import { NextResponse } from "next/server";
-
-import { db } from "@/db";
-import { mediaAsset } from "@/db/schema/media";
-
-export async function GET() {
-  const assets = await db.select().from(mediaAsset);
-
-  return NextResponse.json(assets);
-=======
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { mediaAssets } from "@/db/schema/media";
@@ -101,5 +90,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
->>>>>>> b60796f (fix: use public DATABASE_URL for local dev and sync schema)
 }
