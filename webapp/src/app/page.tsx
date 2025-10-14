@@ -1,6 +1,4 @@
 // src/app/page.tsx
-"use client";
-
 import Link from "next/link";
 
 const features = [
@@ -58,6 +56,7 @@ export default function HomePage() {
           <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_60%)]" />
         </div>
 
+<<<<<<< HEAD
         <section className="mx-auto flex max-w-5xl flex-col items-center gap-8 px-6 pb-24 pt-28 text-center">
           <span className="rounded-full border border-white/20 px-4 py-1 text-sm font-medium uppercase tracking-[0.3em] text-white/80">
             Automate Your Content Engine
@@ -169,6 +168,26 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+=======
+      <p className="text-lg text-gray-300 mb-10 max-w-2xl">
+        Automate your content distribution with AI — upload, clip, and post
+        everywhere automatically.
+      </p>
+
+      <div className="flex flex-wrap gap-4 justify-center">
+        <Link
+          href="/dashboard"
+          className="px-6 py-3 bg-white text-black rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+        >
+          Enter Dashboard
+        </Link>
+        <Link
+          href="/library"
+          className="px-6 py-3 bg-gray-800 text-white rounded-xl font-semibold hover:bg-gray-700 transition-colors"
+        >
+          View Library
+        </Link>
+>>>>>>> b60796f (fix: use public DATABASE_URL for local dev and sync schema)
       </div>
     </main>
   );
