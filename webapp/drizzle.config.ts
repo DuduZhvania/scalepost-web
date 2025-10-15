@@ -1,12 +1,14 @@
-import { defineConfig } from "drizzle-kit";
-import dotenv from "dotenv";
+import { defineConfig } from 'drizzle-kit';
 
-dotenv.config({ path: ".env.local" });
+// Load env only if not in production (e.g., for local migrations)
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: '.env.local' });
+}
 
 export default defineConfig({
-  schema: "./src/db/schema/media.ts",
-  out: "./drizzle",
-  dialect: "postgresql",
+  dialect: 'postgresql',
+  schema: './src/db/schema/media.ts',
+  out: './drizzle',
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },
