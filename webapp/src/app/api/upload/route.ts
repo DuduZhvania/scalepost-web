@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     try {
       await mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // Directory might already exist, that's fine
     }
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Save to database
     const fileUrl = `/uploads/${fileName}`;
-    const result = await db.insert(media_assets).values({
+    await db.insert(media_assets).values({
       userId: "anon",
       fileName: file.name,
       fileUrl: fileUrl,
