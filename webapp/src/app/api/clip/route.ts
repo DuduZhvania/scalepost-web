@@ -1,7 +1,7 @@
 // app/api/clips/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { mediaAssets, clips } from '@/db/schema/media';
+import { media_assets, clips } from '@/db/schema/media';
 import { eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
     // Get the media asset
     const [asset] = await db
       .select()
-      .from(mediaAssets)
-      .where(eq(mediaAssets.id, mediaAssetId))
+      .from(media_assets)
+      .where(eq(media_assets.id, mediaAssetId))
       .limit(1);
 
     if (!asset) {
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
 
     // Update asset status to processing
     await db
-      .update(mediaAssets)
+      .update(media_assets)
       .set({ status: 'processing', updatedAt: new Date() })
-      .where(eq(mediaAssets.id, mediaAssetId));
+      .where(eq(media_assets.id, mediaAssetId));
 
     // MOCK: Generate 5-10 random clips
     // In production, this would call OpusClip API or your own AI service
@@ -98,9 +98,9 @@ export async function POST(req: NextRequest) {
 
     // Update asset status to ready
     await db
-      .update(mediaAssets)
+      .update(media_assets)
       .set({ status: 'ready', updatedAt: new Date() })
-      .where(eq(mediaAssets.id, mediaAssetId));
+      .where(eq(media_assets.id, mediaAssetId));
 
     return NextResponse.json({
       success: true,
@@ -115,9 +115,9 @@ export async function POST(req: NextRequest) {
     try {
       const { mediaAssetId } = await req.json();
       await db
-        .update(mediaAssets)
+        .update(media_assets)
         .set({ status: 'failed', updatedAt: new Date() })
-        .where(eq(mediaAssets.id, mediaAssetId));
+        .where(eq(media_assets.id, mediaAssetId));
     } catch {
       // Ignore
     }

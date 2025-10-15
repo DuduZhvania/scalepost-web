@@ -1,6 +1,6 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { db } from "@/db";
-import { mediaAssets } from "@/db/schema/media";
+import { media_assets } from "@/db/schema/media";
 
 const f = createUploadthing();
 
@@ -11,7 +11,7 @@ export const ourFileRouter = {
       
       // Save to database
       try {
-        await db.insert(mediaAssets).values({
+        await db.insert(media_assets).values({
           userId: 'anon',
           fileName: file.name ?? 'Unknown',
           fileUrl: file.url,

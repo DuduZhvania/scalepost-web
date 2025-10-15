@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { mediaAssets } from "@/db/schema/media";
+import { media_assets } from "@/db/schema/media";
 
 export async function GET() {
   try {
-    const assets = await db.select().from(mediaAssets);
+    const assets = await db.select().from(media_assets);
 
     // Ensure dates and optional fields are normalized for the client.
     const transformedAssets = assets.map((asset) => ({
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const fileName = url.split('/').pop() || 'imported-video';
     const assetId = crypto.randomUUID();
 
-    await db.insert(mediaAssets).values({
+    await db.insert(media_assets).values({
       id: assetId,
       userId: 'anon',
       fileName: fileName,

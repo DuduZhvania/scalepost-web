@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mediaAssets } from "@/db/schema/media";
+import { media_assets } from "@/db/schema/media";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 
@@ -12,8 +12,8 @@ export async function GET(
 
     const result = await db
       .select()
-      .from(mediaAssets)
-      .where(eq(mediaAssets.id, id))
+      .from(media_assets)
+      .where(eq(media_assets.id, id))
       .limit(1);
 
     if (result.length === 0) {
@@ -41,9 +41,9 @@ export async function DELETE(
     const { id } = await params; // ✅ Added await
 
     const asset = await db
-      .select({ id: mediaAssets.id })
-      .from(mediaAssets)
-      .where(eq(mediaAssets.id, id))
+      .select({ id: media_assets.id })
+      .from(media_assets)
+      .where(eq(media_assets.id, id))
       .limit(1);
 
     if (asset.length === 0) {
@@ -53,7 +53,7 @@ export async function DELETE(
       );
     }
 
-    await db.delete(mediaAssets).where(eq(mediaAssets.id, id));
+    await db.delete(media_assets).where(eq(media_assets.id, id));
 
     return NextResponse.json({ success: true, deletedAssetId: id });
   } catch (err) {

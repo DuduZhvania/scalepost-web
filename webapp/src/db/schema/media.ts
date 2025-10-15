@@ -1,7 +1,7 @@
 import { pgTable, text, integer, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
 
 // Media Assets (uploaded videos)
-export const mediaAssets = pgTable('media_assets', {
+export const media_assets = pgTable('media_assets', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').notNull().default('anon'),
   fileName: text('file_name').notNull(),
@@ -18,7 +18,7 @@ export const mediaAssets = pgTable('media_assets', {
 // Generated Clips
 export const clips = pgTable('clips', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  mediaAssetId: text('media_asset_id').notNull().references(() => mediaAssets.id, { onDelete: 'cascade' }),
+  mediaAssetId: text('media_asset_id').notNull().references(() => media_assets.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().default('anon'),
   title: text('title'),
   description: text('description'),
@@ -53,7 +53,7 @@ export const campaigns = pgTable('campaigns', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text('user_id').notNull().default('anon'),
   name: text('name').notNull(),
-  mediaAssetId: text('media_asset_id').references(() => mediaAssets.id, { onDelete: 'cascade' }),
+  mediaAssetId: text('media_asset_id').references(() => media_assets.id, { onDelete: 'cascade' }),
   status: text('status').notNull().default('draft'), // draft | active | paused | completed
   targetPlatforms: jsonb('target_platforms').notNull(), // ['tiktok', 'youtube'] as JSON
   selectedAccounts: jsonb('selected_accounts').notNull(), // [account_ids] as JSON
