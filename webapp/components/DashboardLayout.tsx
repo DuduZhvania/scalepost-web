@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   LayoutDashboard,
   Rocket,
@@ -13,7 +14,6 @@ import {
   Settings,
   Menu,
   X,
-  Zap,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { HeaderBar } from '@/components/ui/dashboard/HeaderBar';
@@ -60,19 +60,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         `}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
+          {/* Logo holder */}
           <div className="flex items-center justify-between p-6 border-b border-zinc-800">
-            <div className="flex items-center gap-2">
-              <Zap className="w-6 h-6 text-white" />
-              <span className="text-xl font-bold">Scalepost</span>
-            </div>
+            <Link href="/dashboard" className="flex items-center gap-2 pr-3">
+              <Image
+                src="/logo-mark.png"
+                alt="Vulgo logo mark"
+                width={54}
+                height={27}
+                priority
+                className="h-8 w-auto object-contain"
+              />
+              <span className="text-[1.4rem] font-bold text-white tracking-[0.18em] pl-[2px]">
+                VULGO
+              </span>
+            </Link>
+
+            {/* Close button (mobile only) */}
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-1 hover:bg-zinc-800 rounded"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-white" />
             </button>
           </div>
+
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
@@ -121,9 +133,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              <span className="font-bold">Scalepost</span>
+            <div className="flex items-center gap-3 pr-2">
+              <Image
+                src="/logo-mark.png"
+                alt="Vulgo logo mark"
+                width={56}
+                height={28}
+                className="h-7 w-auto object-contain"
+              />
+              <span className="text-xl font-bold tracking-[0.18em] pl-[2px]">VULGO</span>
             </div>
             <div className="w-9" /> {/* Spacer for centering */}
           </div>
