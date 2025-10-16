@@ -4,6 +4,7 @@ import { createWriteStream } from "fs";
 import { mkdir, unlink } from "fs/promises";
 import { pipeline } from "stream/promises";
 import { Readable, Transform } from "stream";
+import type { ReadableStream as NodeReadableStream } from "stream/web";
 import { db } from "@/db";
 import { media_assets } from "@/db/schema/media";
 
@@ -144,7 +145,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const nodeStream = Readable.fromWeb(responseBody as ReadableStream<Uint8Array>);
+    const webStream = responseBody as unknown as NodeReadableStream<Uint8Array>;
+    const nodeStream = Readable.fromWeb(webStream);
     let downloadedBytes = 0;
     const sizeGuard = new Transform({
       transform(chunk, _encoding, callback) {
@@ -221,4 +223,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
