@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -9,13 +10,16 @@ import {
   Calendar,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Circle,
   Clock,
+  Filter,
   Info,
   Loader2,
   Play,
   Plus,
   Search,
+  Sparkles,
   TrendingUp,
   UserPlus,
   Video,
@@ -23,48 +27,292 @@ import {
   X as CloseIcon,
 } from "lucide-react";
 
-// Import types
-import type {
-  FrequencyOption,
-  CampaignType,
-  CampaignDuration,
-  PostsPerDay,
-  PostingInterval,
-  VariationMethod,
-  VariationIntensity,
-  ClipSortOption,
-  PlatformKey,
-  Clip,
-  Account,
-  ToastState,
-} from "@/components/campaigns/types";
+type FrequencyOption =
+  | "all-once"
+  | "hourly"
+  | "two-hours"
+  | "six-hours"
+  | "daily"
+  | "custom";
 
-// Import constants
-import {
-  CLIP_SORT_OPTIONS,
-  PLATFORM_META,
-  CTA_OPTIONS,
-  TOTAL_SECTIONS,
-  mockAccounts,
-  defaultDate,
-  defaultEndDate,
-  defaultTime,
-  QUICK_TEMPLATES,
-  PLATFORM_BEST_PRACTICES,
-  AI_VARIATION_EXAMPLES,
-} from "@/components/campaigns/constants";
+type CampaignType = "one-time" | "repetitive";
+type CampaignDuration = "3" | "7" | "14" | "30" | "60" | "90" | "continuous";
+type PostsPerDay = "1-3" | "5-10" | "10-15" | "15-20" | "custom";
+type PostingInterval = "30min-1hr" | "1-2hr" | "2-4hr" | "4-6hr" | "random";
+type VariationMethod = "ai-powered" | "manual";
+type VariationIntensity = "light" | "medium" | "aggressive";
 
-// Import utilities
-import {
-  formatDuration,
-  formatCompactNumber,
-  formatDateTime,
-  getFrequencyLabel,
-  buildTimelinePreview,
-} from "@/components/campaigns/utils";
+type ClipSortOption = "recent" | "oldest" | "duration";
 
-// Import UI components
-import { SummaryRow, ReviewRow } from "@/components/campaigns/CampaignUIComponents";
+type PlatformKey = "tiktok" | "youtube" | "instagram" | "twitter";
+
+interface Clip {
+  id: string;
+  title: string;
+  duration: number;
+  score: number;
+  createdAt: string;
+  platform: PlatformKey;
+  thumbnail?: string | null;
+  clipUrl?: string | null;
+  fileSize?: number | null;
+}
+
+interface Account {
+  id: string;
+  platform: PlatformKey;
+  accountName: string;
+  followers: number;
+}
+
+interface TimelineEntry {
+  label: string;
+  datetime: string;
+}
+
+const FREQUENCY_OPTIONS: Array<{ label: string; value: FrequencyOption; description?: string }> = [
+  { label: "Post All at Once", value: "all-once", description: "Instant drop" },
+  { label: "Hourly Distribution", value: "hourly", description: "1 post/hour" },
+  { label: "Every 2 Hours", value: "two-hours", description: "1 post/2 hours" },
+  { label: "Every 6 Hours", value: "six-hours", description: "1 post/6 hours" },
+  { label: "Daily Distribution", value: "daily", description: "1 post/day, same time" },
+  { label: "Custom Interval", value: "custom", description: "Set your own pace" },
+];
+
+const CLIP_SORT_OPTIONS: Array<{ label: string; value: ClipSortOption }> = [
+  { label: "Recent", value: "recent" },
+  { label: "Oldest", value: "oldest" },
+  { label: "Duration", value: "duration" },
+];
+
+
+const PLATFORM_META: Record<PlatformKey, { label: string; dotClass: string; pillBg: string; charLimit: number; accentColor: string }> = {
+  tiktok: {
+    label: "TikTok",
+    dotClass: "bg-gradient-to-r from-pink-500 to-cyan-400",
+    pillBg: "bg-pink-500/20 border-pink-500/40",
+    charLimit: 2200,
+    accentColor: "pink",
+  },
+  youtube: {
+    label: "YouTube",
+    dotClass: "bg-red-500",
+    pillBg: "bg-red-500/20 border-red-500/40",
+    charLimit: 5000,
+    accentColor: "red",
+  },
+  instagram: {
+    label: "Instagram",
+    dotClass: "bg-gradient-to-r from-pink-500 via-purple-500 to-yellow-400",
+    pillBg: "bg-purple-500/20 border-purple-500/40",
+    charLimit: 2200,
+    accentColor: "purple",
+  },
+  twitter: {
+    label: "Twitter/X",
+    dotClass: "bg-sky-400",
+    pillBg: "bg-sky-400/20 border-sky-400/40",
+    charLimit: 280,
+    accentColor: "sky",
+  },
+};
+
+const PLATFORM_SHORT_LABEL: Record<PlatformKey, string> = {
+  tiktok: "TT",
+  youtube: "YT",
+  instagram: "IG",
+  twitter: "X",
+};
+
+const QUICK_TEMPLATES = [
+  { label: "Hook + Value", content: "🚨 This changed everything for me! Here's what I learned...\n\n{clip_title}" },
+  { label: "Story", content: "Let me tell you about the time I discovered this...\n\n{clip_title}" },
+  { label: "Question", content: "Have you ever wondered why...? Here's the answer 👇\n\n{clip_title}" },
+  { label: "Direct", content: "Check this out! 🔥\n\n{clip_title}" },
+];
+
+const PLATFORM_BEST_PRACTICES: Record<PlatformKey, string[]> = {
+  tiktok: ["Start with hook/emoji", "3-5 hashtags max", "Keep it punchy & short", "Use trending sounds/hashtags"],
+  youtube: ["SEO-optimized titles", "Detailed descriptions", "Include timestamps", "Add links in description"],
+  instagram: ["Engaging first line", "Use line breaks", "Max 30 hashtags", "Include call-to-action"],
+  twitter: ["Keep it under 280 chars", "Use 1-2 hashtags max", "Tag relevant accounts", "Thread for longer content"],
+};
+
+const AI_VARIATION_EXAMPLES = {
+  original: "Check this out! 🔥",
+  variants: [
+    "You won't believe this! 🤯",
+    "This is insane 💯",
+    "Must watch! 🎯",
+    "Wait for it... 😱",
+  ],
+};
+
+const CTA_OPTIONS = [
+  "Follow for more",
+  "Like if you agree",
+  "Comment your thoughts",
+  "Share with friends",
+  "Save for later",
+  "Turn on notifications",
+];
+
+const TOTAL_SECTIONS = 4;
+
+const mockAccounts: Account[] = [
+  {
+    id: "acct-1",
+    platform: "tiktok",
+    accountName: "@scaleposthq",
+    followers: 10500,
+  },
+  {
+    id: "acct-2",
+    platform: "tiktok",
+    accountName: "@scalepost.creator",
+    followers: 5200,
+  },
+  {
+    id: "acct-3",
+    platform: "youtube",
+    accountName: "Scalepost Studio",
+    followers: 18700,
+  },
+  {
+    id: "acct-4",
+    platform: "instagram",
+    accountName: "@scalepost",
+    followers: 8900,
+  },
+  {
+    id: "acct-5",
+    platform: "instagram",
+    accountName: "@scalepost.team",
+    followers: 4300,
+  },
+  {
+    id: "acct-6",
+    platform: "twitter",
+    accountName: "@scalepost",
+    followers: 6700,
+  },
+];
+
+const today = new Date();
+const defaultDate = today.toISOString().slice(0, 10);
+const sevenDaysLater = new Date(today);
+sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+const defaultEndDate = sevenDaysLater.toISOString().slice(0, 10);
+const defaultTime = `${today.getHours().toString().padStart(2, "0")}:${today
+  .getMinutes()
+  .toString()
+  .padStart(2, "0")}`;
+
+function formatDuration(seconds: number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en", { notation: "compact" }).format(value);
+}
+
+function formatDateTime(date: string, time: string) {
+  if (!date || !time) return "";
+  const iso = `${date}T${time}`;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getFrequencyLabel(value: FrequencyOption) {
+  return FREQUENCY_OPTIONS.find((option) => option.value === value)?.label ?? "Post All Once";
+}
+
+interface TimelinePost {
+  clipTitle: string;
+  accountName: string;
+  platform: string;
+  datetime: string;
+  index: number;
+}
+
+function buildTimelinePreview(
+  frequency: FrequencyOption,
+  date: string,
+  time: string,
+  clips: Clip[],
+  accounts: Account[],
+  customInterval: number,
+  customIntervalUnit: "minutes" | "hours" | "days"
+): TimelinePost[] {
+  if (clips.length === 0 || accounts.length === 0) {
+    return [];
+  }
+
+  const base = date && time 
+    ? new Date(`${date}T${time}`)
+    : new Date();
+    
+  if (Number.isNaN(base.getTime())) {
+    return [];
+  }
+
+  let intervalMs = 0;
+  
+  if (frequency === "hourly") {
+    intervalMs = 60 * 60 * 1000;
+  } else if (frequency === "two-hours") {
+    intervalMs = 2 * 60 * 60 * 1000;
+  } else if (frequency === "six-hours") {
+    intervalMs = 6 * 60 * 60 * 1000;
+  } else if (frequency === "daily") {
+    intervalMs = 24 * 60 * 60 * 1000;
+  } else if (frequency === "custom") {
+    const multiplier = customIntervalUnit === "minutes" ? 60 * 1000 
+      : customIntervalUnit === "hours" ? 60 * 60 * 1000 
+      : 24 * 60 * 60 * 1000;
+    intervalMs = customInterval * multiplier;
+  }
+
+  const results: TimelinePost[] = [];
+  let postIndex = 0;
+
+  for (const clip of clips) {
+    for (const account of accounts) {
+      const postDate = frequency === "all-once" 
+        ? base 
+        : new Date(base.getTime() + postIndex * intervalMs);
+      
+      results.push({
+        clipTitle: clip.title,
+        accountName: account.accountName,
+        platform: PLATFORM_META[account.platform]?.label || account.platform,
+        datetime: postDate.toLocaleString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        index: postIndex + 1,
+      });
+      
+      postIndex++;
+    }
+  }
+  
+  return results;
+}
+
+interface ToastState {
+  message: string;
+  tone: "success" | "error";
+}
 
 export default function CampaignBuilder() {
   const [campaignName, setCampaignName] = useState("");
@@ -244,7 +492,7 @@ export default function CampaignBuilder() {
         const clipsArray = Array.isArray(data) ? data : (data.clips || []);
         
         // Transform API clips to match our Clip interface
-        const transformedClips: Clip[] = clipsArray.map((clip: Record<string, unknown>) => ({
+        const transformedClips: Clip[] = clipsArray.map((clip: any) => ({
           id: clip.id,
           title: clip.title || clip.assetFileName || `Clip ${clip.id}`,
           platform: 'tiktok' as PlatformKey, // Default platform
@@ -468,11 +716,11 @@ export default function CampaignBuilder() {
     try {
       // TODO: replace with real API call
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      setToast({ message: `Campaign launched! ${campaignType === "repetitive" ? grandTotalPosts : totalPosts} posts scheduled.`, type: "success" });
+      setToast({ message: `Campaign launched! ${campaignType === "repetitive" ? grandTotalPosts : totalPosts} posts scheduled.`, tone: "success" });
       setReviewOpen(false);
       // TODO: replace with router push to campaign detail
     } catch (error) {
-      setToast({ message: "Something went wrong launching the campaign.", type: "error" });
+      setToast({ message: "Something went wrong launching the campaign.", tone: "error" });
     } finally {
       setLaunching(false);
     }
@@ -487,7 +735,7 @@ export default function CampaignBuilder() {
           role="status"
           className={clsx(
             "fixed left-1/2 top-6 z-[100] -translate-x-1/2 transform rounded-full border px-5 py-2.5 shadow-lg backdrop-blur",
-            toast.type === "success"
+            toast.tone === "success"
               ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
               : "border-red-400/40 bg-red-500/20 text-red-100"
           )}
@@ -538,23 +786,23 @@ export default function CampaignBuilder() {
             {/* Campaign Name Input */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-zinc-200">Campaign Name *</label>
-                  <input
-                    value={campaignName}
-                    onChange={(event) => setCampaignName(event.target.value)}
-                    placeholder="e.g., Weekly Content Drop"
-                    className={clsx(
-                      "w-full rounded-lg border px-4 py-3 text-sm transition focus:border-cyan-400 focus:outline-none",
-                      "bg-black/60",
-                      campaignNameError ? "border-red-500/60" : "border-white/20"
-                    )}
-                  />
-                  {campaignNameError && (
-                    <p className="mt-2 flex items-center gap-2 text-xs text-red-400">
-                      <AlertCircle className="h-3.5 w-3.5" />
-                      Campaign name is required.
-                    </p>
-                  )}
-                </div>
+              <input
+                value={campaignName}
+                onChange={(event) => setCampaignName(event.target.value)}
+                placeholder="e.g., Weekly Content Drop"
+                className={clsx(
+                  "w-full rounded-lg border px-4 py-3 text-sm transition focus:border-cyan-400 focus:outline-none",
+                  "bg-black/60",
+                  campaignNameError ? "border-red-500/60" : "border-white/20"
+                )}
+              />
+              {campaignNameError && (
+                <p className="mt-2 flex items-center gap-2 text-xs text-red-400">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Campaign name is required.
+                </p>
+              )}
+            </div>
 
             {/* Section 1: Select Content */}
             <section id="section-1" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
@@ -973,7 +1221,7 @@ export default function CampaignBuilder() {
                               <label className="text-xs font-medium text-zinc-300 block mb-2">Variation Style:</label>
                               <select
                                 value={variationStyle}
-                                onChange={(e) => setVariationStyle(e.target.value as "similar" | "hooks" | "rewrite" | "template-ai")}
+                                onChange={(e) => setVariationStyle(e.target.value as any)}
                                 className="w-full appearance-none rounded-lg border border-white/20 bg-black/60 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                               >
                                 <option value="similar">Similar Meaning (keeps your message, changes wording)</option>
@@ -1189,8 +1437,8 @@ export default function CampaignBuilder() {
                       <option value="one-time">One-Time Drop - Post clips once and finish</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                        </div>
-                      </div>
+                  </div>
+                </div>
 
                 {/* Posting Schedule - Simplified */}
                 <div className="border-t border-white/10 pt-6">
@@ -1219,13 +1467,13 @@ export default function CampaignBuilder() {
                         />
                         <span className="text-xs text-zinc-400">
                           {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local'}
-                      </span>
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   {/* End Date & Time - Full Width */}
-                    <div>
+                  <div>
                     <label className="text-xs font-medium text-zinc-400 block mb-2">End date</label>
                     <div className="flex items-center gap-3 w-full">
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
@@ -1235,8 +1483,8 @@ export default function CampaignBuilder() {
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
                           className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
-                          />
-                    </div>
+                        />
+                      </div>
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
                         <Clock className="h-4 w-4 text-zinc-400" />
                         <input
@@ -1248,8 +1496,8 @@ export default function CampaignBuilder() {
                         <span className="text-xs text-zinc-400">
                           {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local'}
                         </span>
-                        </div>
                       </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1258,7 +1506,7 @@ export default function CampaignBuilder() {
                   <div className="space-y-6 border-t border-white/10 pt-6">
 
                     {/* Daily Reposts - Dropdown with Presets */}
-                    <div>
+                  <div>
                       <label className="text-sm font-medium text-zinc-200 block mb-3">
                         Daily Reposts <span className="text-zinc-500 font-normal">(Per account)</span>
                       </label>
@@ -1268,7 +1516,7 @@ export default function CampaignBuilder() {
                                  customPostsPerDay <= 10 ? "5-10" :
                                  customPostsPerDay <= 15 ? "10-15" :
                                  customPostsPerDay <= 20 ? "15-20" : "custom"}
-                            onChange={(e) => {
+                          onChange={(e) => {
                             const value = e.target.value;
                             if (value === "1-4") setCustomPostsPerDay(2);
                             else if (value === "5-10") setCustomPostsPerDay(7);
@@ -1283,8 +1531,8 @@ export default function CampaignBuilder() {
                           <option value="15-20">15-20 posts/day (Risky of getting flagged)</option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                  </div>
-
+                      </div>
+                      
                       {/* Fine-tune control */}
                       <div className="mt-4 flex items-center gap-4">
                         <button
@@ -1357,10 +1605,10 @@ export default function CampaignBuilder() {
                               </div>
                               <p className="text-xs text-zinc-400 mt-1">Add ±10-20% time variance to mimic human posting patterns</p>
                             </div>
-                        <button
-                          type="button"
+                            <button
+                              type="button"
                               onClick={() => setTimingRandomization(!timingRandomization)}
-                      className={clsx(
+                              className={clsx(
                                 "relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black ml-4",
                                 timingRandomization ? "bg-cyan-500" : "bg-zinc-700"
                               )}
@@ -1371,8 +1619,8 @@ export default function CampaignBuilder() {
                                   timingRandomization ? "translate-x-5" : "translate-x-0"
                                 )}
                               />
-                        </button>
-                      </div>
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -1499,21 +1747,13 @@ export default function CampaignBuilder() {
                             <Circle className="h-2 w-2 flex-shrink-0 text-cyan-400 mt-1.5" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white">
-                                Post {post.index} · Clip: &quot;{post.clipTitle.length > 20 ? post.clipTitle.slice(0, 20) + '...' : post.clipTitle}&quot;
+                                Post {post.index} · Clip: "{post.clipTitle.length > 20 ? post.clipTitle.slice(0, 20) + '...' : post.clipTitle}"
                               </p>
                               <p className="text-xs text-zinc-400 mt-0.5">
-                                → {PLATFORM_META[post.platform]?.label || post.platform} {post.accountName}
+                                → {post.platform} {post.accountName}
                         </p>
                       </div>
-                            <span className="text-xs text-zinc-500 flex-shrink-0">
-                              {post.postTime.toLocaleString(undefined, {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
+                            <span className="text-xs text-zinc-500 flex-shrink-0">{post.datetime}</span>
                           </div>
                         ))}
                         {timelinePreview.length > 3 && !showAllTimeline && (
@@ -1538,8 +1778,8 @@ export default function CampaignBuilder() {
                       <div className="mt-4 pt-3 border-t border-white/20 text-xs text-zinc-400">
                         Campaign runs for {(() => {
                           if (frequency === "all-once" || timelinePreview.length <= 1) return "instant deployment";
-                          const first = timelinePreview[0].postTime;
-                          const last = timelinePreview[timelinePreview.length - 1].postTime;
+                          const first = new Date(timelinePreview[0].datetime);
+                          const last = new Date(timelinePreview[timelinePreview.length - 1].datetime);
                           const diffMs = last.getTime() - first.getTime();
                           const hours = Math.round(diffMs / (1000 * 60 * 60));
                           const days = Math.floor(hours / 24);
@@ -2365,6 +2605,44 @@ export default function CampaignBuilder() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">{label}</p>
+      <div className="text-sm text-zinc-200">{children}</div>
+    </div>
+  );
+}
+
+function PerformanceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-zinc-400">{label}</span>
+      <span className="font-medium text-white">{value}</span>
+    </div>
+  );
+}
+
+function ReviewRow({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-white/20 bg-black/70 p-4">
+      <div className="flex items-center justify-between text-sm text-zinc-300">
+        <p className="font-semibold text-white">{label}</p>
+        {value && <p className="text-zinc-400">{value}</p>}
+      </div>
+      {children}
     </div>
   );
 }
