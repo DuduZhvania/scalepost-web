@@ -24,3 +24,122 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.7s ease forwards;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-gradient-flow {
+    animation: gradientFlow 14s ease-in-out infinite alternate;
+  }
+
+  .live-pulse-dot {
+    position: relative;
+    display: inline-block;
+    height: 0.625rem;
+    width: 0.625rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 1), rgba(59, 130, 246, 1));
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+    animation: livePulse 1.6s ease-in-out infinite;
+  }
+
+  .distribute-glow::before {
+    content: "";
+    position: absolute;
+    inset: -30%;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.4), transparent 65%);
+    opacity: 0.7;
+    animation: distributeGlow 4s ease-in-out infinite;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .distribute-glow {
+    position: relative;
+    z-index: 0;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes gradientFlow {
+    0% {
+      transform: rotate(0deg) scale(1);
+      opacity: 0.25;
+    }
+    50% {
+      transform: rotate(180deg) scale(1.05);
+      opacity: 0.5;
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
+      opacity: 0.25;
+    }
+  }
+
+  @keyframes livePulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+    }
+    50% {
+      transform: scale(1.3);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.65);
+    }
+  }
+
+  @keyframes distributeGlow {
+    0% {
+      transform: rotate(0deg);
+      opacity: 0.35;
+    }
+    50% {
+      transform: rotate(180deg);
+      opacity: 0.65;
+    }
+    100% {
+      transform: rotate(360deg);
+      opacity: 0.35;
+    }
+  }
+}

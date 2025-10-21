@@ -3,9 +3,12 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { db } from "@/db";
 import { media_assets } from "@/db/schema/media";
+import { ensureMediaAssetColumns } from "@/lib/ensureMediaAssetColumns";
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureMediaAssetColumns();
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -57,6 +60,8 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
       fileUrl: fileUrl,
       fileSize: file.size,
+      type: "file",
+      sourceUrl: null,
       status: "uploaded",
     });
 
@@ -78,4 +83,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

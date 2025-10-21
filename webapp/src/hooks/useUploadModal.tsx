@@ -1,7 +1,7 @@
-// hooks/useUploadModal.ts
+// hooks/useUploadModal.tsx
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
 type UploadModalTab = 'file' | 'url';
 
@@ -20,9 +20,13 @@ export function UploadModalProvider({ children }: { children: ReactNode }) {
     initialTab: 'file',
   });
 
-  const open = (options?: { tab?: UploadModalTab }) =>
+  const open = useCallback((options?: { tab?: UploadModalTab }) => {
     setState({ isOpen: true, initialTab: options?.tab ?? 'file' });
-  const close = () => setState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const close = useCallback(() => {
+    setState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   return (
     <UploadModalContext.Provider

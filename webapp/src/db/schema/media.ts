@@ -11,6 +11,8 @@ export const media_assets = pgTable('media_assets', {
   thumbnail: text('thumbnail'),
   status: text('status').notNull().default('uploaded'), // uploaded | processing | ready | failed
   metadata: jsonb('metadata'), // store width, height, codec, etc. as JSON
+  type: text('type').$type<'file' | 'link'>().notNull().default('file'),
+  sourceUrl: text('source_url'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

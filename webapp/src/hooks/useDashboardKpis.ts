@@ -6,6 +6,8 @@ export interface DashboardKpis {
   postsPublished: number;
   activeAccounts: number;
   totalViews: number;
+  avgEngagementRate: number;
+  timeframeLabel: string;
 }
 
 export function useDashboardKpis(): { data: DashboardKpis | null; loading: boolean } {
@@ -20,6 +22,8 @@ export function useDashboardKpis(): { data: DashboardKpis | null; loading: boole
         postsPublished: 127,
         activeAccounts: 8,
         totalViews: 45200,
+        avgEngagementRate: 5.4,
+        timeframeLabel: 'Last 30 Days',
       });
       setLoading(false);
     }, 300);

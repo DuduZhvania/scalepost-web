@@ -1,8 +1,9 @@
 import { defineConfig } from 'drizzle-kit';
+import { config as loadEnv } from 'dotenv';
 
 // Load env only if not in production (e.g., for local migrations)
 if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config({ path: '.env.local' });
+  loadEnv({ path: '.env.local' });
 }
 
 export default defineConfig({

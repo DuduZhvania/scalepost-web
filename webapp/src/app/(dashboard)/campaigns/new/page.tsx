@@ -1,401 +1,2648 @@
-// app/campaigns/new/page.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import clsx from "clsx";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  Clock,
+  Filter,
+  Info,
+  Loader2,
+  Play,
+  Plus,
+  Search,
+  Sparkles,
+  TrendingUp,
+  UserPlus,
+  Video,
+  X,
+  X as CloseIcon,
+} from "lucide-react";
 
-interface Account {
-  id: string;
-  platform: string;
-  accountName: string;
-  isActive: boolean;
-}
+type FrequencyOption =
+  | "all-once"
+  | "hourly"
+  | "two-hours"
+  | "six-hours"
+  | "daily"
+  | "custom";
+
+type CampaignType = "one-time" | "repetitive";
+type CampaignDuration = "3" | "7" | "14" | "30" | "60" | "90" | "continuous";
+type PostsPerDay = "1-3" | "5-10" | "10-15" | "15-20" | "custom";
+type PostingInterval = "30min-1hr" | "1-2hr" | "2-4hr" | "4-6hr" | "random";
+type VariationMethod = "ai-powered" | "manual";
+type VariationIntensity = "light" | "medium" | "aggressive";
+
+type ClipSortOption = "recent" | "oldest" | "duration";
+
+type PlatformKey = "tiktok" | "youtube" | "instagram" | "twitter";
 
 interface Clip {
   id: string;
   title: string;
-  thumbnail?: string;
   duration: number;
-  score?: number;
+  score: number;
+  createdAt: string;
+  platform: PlatformKey;
+  thumbnail?: string | null;
+  clipUrl?: string | null;
+  fileSize?: number | null;
+}
+
+interface Account {
+  id: string;
+  platform: PlatformKey;
+  accountName: string;
+  followers: number;
+}
+
+interface TimelineEntry {
+  label: string;
+  datetime: string;
+}
+
+const FREQUENCY_OPTIONS: Array<{ label: string; value: FrequencyOption; description?: string }> = [
+  { label: "Post All at Once", value: "all-once", description: "Instant drop" },
+  { label: "Hourly Distribution", value: "hourly", description: "1 post/hour" },
+  { label: "Every 2 Hours", value: "two-hours", description: "1 post/2 hours" },
+  { label: "Every 6 Hours", value: "six-hours", description: "1 post/6 hours" },
+  { label: "Daily Distribution", value: "daily", description: "1 post/day, same time" },
+  { label: "Custom Interval", value: "custom", description: "Set your own pace" },
+];
+
+const CLIP_SORT_OPTIONS: Array<{ label: string; value: ClipSortOption }> = [
+  { label: "Recent", value: "recent" },
+  { label: "Oldest", value: "oldest" },
+  { label: "Duration", value: "duration" },
+];
+
+
+const PLATFORM_META: Record<PlatformKey, { label: string; dotClass: string; pillBg: string; charLimit: number; accentColor: string }> = {
+  tiktok: {
+    label: "TikTok",
+    dotClass: "bg-gradient-to-r from-pink-500 to-cyan-400",
+    pillBg: "bg-pink-500/20 border-pink-500/40",
+    charLimit: 2200,
+    accentColor: "pink",
+  },
+  youtube: {
+    label: "YouTube",
+    dotClass: "bg-red-500",
+    pillBg: "bg-red-500/20 border-red-500/40",
+    charLimit: 5000,
+    accentColor: "red",
+  },
+  instagram: {
+    label: "Instagram",
+    dotClass: "bg-gradient-to-r from-pink-500 via-purple-500 to-yellow-400",
+    pillBg: "bg-purple-500/20 border-purple-500/40",
+    charLimit: 2200,
+    accentColor: "purple",
+  },
+  twitter: {
+    label: "Twitter/X",
+    dotClass: "bg-sky-400",
+    pillBg: "bg-sky-400/20 border-sky-400/40",
+    charLimit: 280,
+    accentColor: "sky",
+  },
+};
+
+const PLATFORM_SHORT_LABEL: Record<PlatformKey, string> = {
+  tiktok: "TT",
+  youtube: "YT",
+  instagram: "IG",
+  twitter: "X",
+};
+
+const QUICK_TEMPLATES = [
+  { label: "Hook + Value", content: "🚨 This changed everything for me! Here's what I learned...\n\n{clip_title}" },
+  { label: "Story", content: "Let me tell you about the time I discovered this...\n\n{clip_title}" },
+  { label: "Question", content: "Have you ever wondered why...? Here's the answer 👇\n\n{clip_title}" },
+  { label: "Direct", content: "Check this out! 🔥\n\n{clip_title}" },
+];
+
+const PLATFORM_BEST_PRACTICES: Record<PlatformKey, string[]> = {
+  tiktok: ["Start with hook/emoji", "3-5 hashtags max", "Keep it punchy & short", "Use trending sounds/hashtags"],
+  youtube: ["SEO-optimized titles", "Detailed descriptions", "Include timestamps", "Add links in description"],
+  instagram: ["Engaging first line", "Use line breaks", "Max 30 hashtags", "Include call-to-action"],
+  twitter: ["Keep it under 280 chars", "Use 1-2 hashtags max", "Tag relevant accounts", "Thread for longer content"],
+};
+
+const AI_VARIATION_EXAMPLES = {
+  original: "Check this out! 🔥",
+  variants: [
+    "You won't believe this! 🤯",
+    "This is insane 💯",
+    "Must watch! 🎯",
+    "Wait for it... 😱",
+  ],
+};
+
+const CTA_OPTIONS = [
+  "Follow for more",
+  "Like if you agree",
+  "Comment your thoughts",
+  "Share with friends",
+  "Save for later",
+  "Turn on notifications",
+];
+
+const TOTAL_SECTIONS = 4;
+
+const mockAccounts: Account[] = [
+  {
+    id: "acct-1",
+    platform: "tiktok",
+    accountName: "@scaleposthq",
+    followers: 10500,
+  },
+  {
+    id: "acct-2",
+    platform: "tiktok",
+    accountName: "@scalepost.creator",
+    followers: 5200,
+  },
+  {
+    id: "acct-3",
+    platform: "youtube",
+    accountName: "Scalepost Studio",
+    followers: 18700,
+  },
+  {
+    id: "acct-4",
+    platform: "instagram",
+    accountName: "@scalepost",
+    followers: 8900,
+  },
+  {
+    id: "acct-5",
+    platform: "instagram",
+    accountName: "@scalepost.team",
+    followers: 4300,
+  },
+  {
+    id: "acct-6",
+    platform: "twitter",
+    accountName: "@scalepost",
+    followers: 6700,
+  },
+];
+
+const today = new Date();
+const defaultDate = today.toISOString().slice(0, 10);
+const sevenDaysLater = new Date(today);
+sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+const defaultEndDate = sevenDaysLater.toISOString().slice(0, 10);
+const defaultTime = `${today.getHours().toString().padStart(2, "0")}:${today
+  .getMinutes()
+  .toString()
+  .padStart(2, "0")}`;
+
+function formatDuration(seconds: number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en", { notation: "compact" }).format(value);
+}
+
+function formatDateTime(date: string, time: string) {
+  if (!date || !time) return "";
+  const iso = `${date}T${time}`;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getFrequencyLabel(value: FrequencyOption) {
+  return FREQUENCY_OPTIONS.find((option) => option.value === value)?.label ?? "Post All Once";
+}
+
+interface TimelinePost {
+  clipTitle: string;
+  accountName: string;
+  platform: string;
+  datetime: string;
+  index: number;
+}
+
+function buildTimelinePreview(
+  frequency: FrequencyOption,
+  date: string,
+  time: string,
+  clips: Clip[],
+  accounts: Account[],
+  customInterval: number,
+  customIntervalUnit: "minutes" | "hours" | "days"
+): TimelinePost[] {
+  if (clips.length === 0 || accounts.length === 0) {
+    return [];
+  }
+
+  const base = date && time 
+    ? new Date(`${date}T${time}`)
+    : new Date();
+    
+  if (Number.isNaN(base.getTime())) {
+    return [];
+  }
+
+  let intervalMs = 0;
+  
+  if (frequency === "hourly") {
+    intervalMs = 60 * 60 * 1000;
+  } else if (frequency === "two-hours") {
+    intervalMs = 2 * 60 * 60 * 1000;
+  } else if (frequency === "six-hours") {
+    intervalMs = 6 * 60 * 60 * 1000;
+  } else if (frequency === "daily") {
+    intervalMs = 24 * 60 * 60 * 1000;
+  } else if (frequency === "custom") {
+    const multiplier = customIntervalUnit === "minutes" ? 60 * 1000 
+      : customIntervalUnit === "hours" ? 60 * 60 * 1000 
+      : 24 * 60 * 60 * 1000;
+    intervalMs = customInterval * multiplier;
+  }
+
+  const results: TimelinePost[] = [];
+  let postIndex = 0;
+
+  for (const clip of clips) {
+    for (const account of accounts) {
+      const postDate = frequency === "all-once" 
+        ? base 
+        : new Date(base.getTime() + postIndex * intervalMs);
+      
+      results.push({
+        clipTitle: clip.title,
+        accountName: account.accountName,
+        platform: PLATFORM_META[account.platform]?.label || account.platform,
+        datetime: postDate.toLocaleString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        index: postIndex + 1,
+      });
+      
+      postIndex++;
+    }
+  }
+  
+  return results;
+}
+
+interface ToastState {
+  message: string;
+  tone: "success" | "error";
 }
 
 export default function CampaignBuilder() {
-  // Mock data for now - will be replaced with real data fetching
-  const clips: Clip[] = [];
-  const accounts: Account[] = [];
-  const [campaignName, setCampaignName] = useState('');
+  const [campaignName, setCampaignName] = useState("");
   const [selectedClips, setSelectedClips] = useState<Set<string>>(new Set());
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<PlatformKey>>(new Set());
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
-  const [scheduleType, setScheduleType] = useState<'immediate' | 'scheduled'>('immediate');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [frequency, setFrequency] = useState<'once' | 'daily' | 'hourly'>('once');
-  const [rehash, setRehash] = useState(false);
-
-  const toggleClip = (clipId: string) => {
-    const newSet = new Set(selectedClips);
-    if (newSet.has(clipId)) {
-      newSet.delete(clipId);
+  const [openAccountDropdown, setOpenAccountDropdown] = useState<PlatformKey | null>(null);
+  const [clipSelectionOpen, setClipSelectionOpen] = useState(false);
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [clipsLoading, setClipsLoading] = useState(true);
+  const [clipSearch, setClipSearch] = useState("");
+  const [clipSort, setClipSort] = useState<ClipSortOption>("recent");
+  const [clipLimit, setClipLimit] = useState(12);
+  const [clipStatsOpen, setClipStatsOpen] = useState(false);
+  const [selectedClipForStats, setSelectedClipForStats] = useState<Clip | null>(null);
+  const [showAllSelectedClips, setShowAllSelectedClips] = useState(false);
+  const [showAllDistribution, setShowAllDistribution] = useState(false);
+  const [showAllTimeline, setShowAllTimeline] = useState(false);
+  const [campaignType, setCampaignType] = useState<CampaignType>("repetitive");
+  const [scheduleType, setScheduleType] = useState<"now" | "schedule">("now");
+  const [campaignDuration, setCampaignDuration] = useState<CampaignDuration>("7");
+  const [postsPerDay, setPostsPerDay] = useState<PostsPerDay>("5-10");
+  const [customPostsPerDay, setCustomPostsPerDay] = useState(8);
+  const [postingInterval, setPostingInterval] = useState<PostingInterval>("1-2hr");
+  const [timingRandomization, setTimingRandomization] = useState(true);
+  const [variationMethod, setVariationMethod] = useState<VariationMethod>("ai-powered");
+  const [variationIntensity, setVariationIntensity] = useState<VariationIntensity>("medium");
+  const [startDate, setStartDate] = useState(defaultDate);
+  const [startTime, setStartTime] = useState(defaultTime);
+  const [endDate, setEndDate] = useState(defaultEndDate);
+  const [endTime, setEndTime] = useState(defaultTime);
+  const [frequency, setFrequency] = useState<FrequencyOption>("hourly");
+  const [customInterval, setCustomInterval] = useState(2);
+  const [customIntervalUnit, setCustomIntervalUnit] = useState<"minutes" | "hours" | "days">("hours");
+  // Video modifications
+  const [mirrorFlip, setMirrorFlip] = useState(true);
+  const [adjustSpeed, setAdjustSpeed] = useState(true);
+  const [applyFilters, setApplyFilters] = useState(true);
+  const [changeGrading, setChangeGrading] = useState(true);
+  const [cropZoom, setCropZoom] = useState(true);
+  const [addVignette, setAddVignette] = useState(false);
+  const [rotateVideo, setRotateVideo] = useState(false);
+  // Audio modifications
+  const [changeMusic, setChangeMusic] = useState(false);
+  const [adjustPitch, setAdjustPitch] = useState(false);
+  const [addSoundEffects, setAddSoundEffects] = useState(false);
+  const [changeVolume, setChangeVolume] = useState(false);
+  // Text & captions
+  const [uniqueCaptions, setUniqueCaptions] = useState(true);
+  const [rotateHashtags, setRotateHashtags] = useState(true);
+  const [changeEmojis, setChangeEmojis] = useState(true);
+  const [varyCTA, setVaryCTA] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  
+  // Post Captions & Details
+  const [captionStrategy, setCaptionStrategy] = useState<"single" | "platform-specific">("single");
+  const [captionTemplate, setCaptionTemplate] = useState("");
+  const [hashtags, setHashtags] = useState("");
+  const [selectedCaptionPlatform, setSelectedCaptionPlatform] = useState<PlatformKey>("tiktok");
+  const [platformCaptions, setPlatformCaptions] = useState<Record<PlatformKey, string>>({
+    tiktok: "",
+    youtube: "",
+    instagram: "",
+    twitter: "",
+  });
+  const [platformHashtags, setPlatformHashtags] = useState<Record<PlatformKey, string>>({
+    tiktok: "",
+    youtube: "",
+    instagram: "",
+    twitter: "",
+  });
+  
+  // Caption Automation
+  const [aiCaptionVariations, setAiCaptionVariations] = useState(true);
+  const [variationStyle, setVariationStyle] = useState<"similar" | "hooks" | "rewrite" | "template-ai">("similar");
+  const [hashtagRotation, setHashtagRotation] = useState(false);
+  const [hashtagSets, setHashtagSets] = useState<string[]>(["#fyp #viral #trending"]);
+  const [emojiRandomization, setEmojiRandomization] = useState(false);
+  const [ctaRotation, setCtaRotation] = useState(false);
+  const [selectedCTAs, setSelectedCTAs] = useState<string[]>(["Follow for more", "Like if you agree"]);
+  const [showPlatformLimits, setShowPlatformLimits] = useState(false);
+  const [captionDetailsOpen, setCaptionDetailsOpen] = useState(true);
+  const [automationOpen, setAutomationOpen] = useState(true);
+  const [showAdvancedAutomation, setShowAdvancedAutomation] = useState(false);
+  const [showCaptionPreview, setShowCaptionPreview] = useState(false);
+  const advancedAutomationActive = hashtagRotation || emojiRandomization || ctaRotation;
+  const automationPanelOpen = automationOpen || aiCaptionVariations || advancedAutomationActive;
+  const advancedAutomationPanelOpen = showAdvancedAutomation || advancedAutomationActive;
+  
+  // Collapsible sections - All collapsed by default for wizard mode
+  const [collapsedSections, setCollapsedSections] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
+  const [activeSectionIndex, setActiveSectionIndex] = useState<number>(1);
+  
+  const toggleSection = (sectionNum: number) => {
+    const newCollapsed = new Set(collapsedSections);
+    if (newCollapsed.has(sectionNum)) {
+      newCollapsed.delete(sectionNum);
     } else {
-      newSet.add(clipId);
+      newCollapsed.add(sectionNum);
     }
-    setSelectedClips(newSet);
+    setCollapsedSections(newCollapsed);
+  };
+
+  // Scroll to section and expand it (for wizard stepper)
+  const scrollToSection = (sectionId: number) => {
+    const sectionElement = document.getElementById(`section-${sectionId}`);
+    if (sectionElement) {
+      // Expand the section first
+      setCollapsedSections((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(sectionId);
+        return newSet;
+      });
+      
+      // Scroll with offset for header
+      setTimeout(() => {
+        const yOffset = -100;
+        const y = sectionElement.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }, 100);
+      
+      setActiveSectionIndex(sectionId);
+    }
+  };
+
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeout = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(timeout);
+  }, [toast]);
+
+  // Scroll detection to update active section
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = [1, 2, 3, 4, 5];
+      const scrollPosition = window.scrollY + 200; // Offset for better UX
+      
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const section = document.getElementById(`section-${sections[i]}`);
+        if (section && section.offsetTop <= scrollPosition) {
+          setActiveSectionIndex(sections[i]);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const platformAccounts = useMemo(() => {
+    return mockAccounts.reduce<Record<PlatformKey, Account[]>>((acc, account) => {
+      acc[account.platform] = acc[account.platform] ?? [];
+      acc[account.platform].push(account);
+      return acc;
+    }, { tiktok: [], youtube: [], instagram: [], twitter: [] });
+  }, []);
+
+  // Fetch clips from library on mount
+  useEffect(() => {
+    const fetchClips = async () => {
+      try {
+        setClipsLoading(true);
+        const response = await fetch('/api/clip?all=1', {
+          cache: 'no-store',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch clips');
+        }
+
+        const data = await response.json();
+        const clipsArray = Array.isArray(data) ? data : (data.clips || []);
+        
+        // Transform API clips to match our Clip interface
+        const transformedClips: Clip[] = clipsArray.map((clip: any) => ({
+          id: clip.id,
+          title: clip.title || clip.assetFileName || `Clip ${clip.id}`,
+          platform: 'tiktok' as PlatformKey, // Default platform
+          score: clip.score || 75,
+          duration: clip.duration || 0,
+          createdAt: clip.createdAt,
+          thumbnail: clip.thumbnail || null,
+          clipUrl: clip.clipUrl || clip.url || null,
+          fileSize: clip.fileSize || clip.assetFileSize || null,
+        }));
+        
+        setClips(transformedClips);
+      } catch (error) {
+        console.error('Error fetching clips:', error);
+        setClips([]);
+      } finally {
+        setClipsLoading(false);
+      }
+    };
+
+    fetchClips();
+  }, []);
+
+  const filteredClips = useMemo(() => {
+    const term = clipSearch.trim().toLowerCase();
+
+    const matches = clips.filter((clip) => {
+      if (!term) return true;
+      return clip.title.toLowerCase().includes(term);
+    });
+
+    const sorted = matches.sort((a, b) => {
+      if (clipSort === "recent") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (clipSort === "oldest") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      if (clipSort === "duration") {
+      return b.duration - a.duration;
+      }
+      return 0;
+    });
+
+    return sorted;
+  }, [clipSearch, clipSort, clips]);
+
+  const displayedClips = filteredClips.slice(0, clipLimit);
+  const hasMoreClips = filteredClips.length > clipLimit;
+
+  const toggleClip = useCallback(
+    (clipId: string) => {
+      setSelectedClips((prev) => {
+        const next = new Set(prev);
+        if (next.has(clipId)) {
+          next.delete(clipId);
+        } else {
+          next.add(clipId);
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const togglePlatform = (platform: PlatformKey) => {
+    setSelectedPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(platform)) {
+        next.delete(platform);
+      } else {
+        next.add(platform);
+      }
+      return next;
+    });
   };
 
   const toggleAccount = (accountId: string) => {
-    const newSet = new Set(selectedAccounts);
-    if (newSet.has(accountId)) {
-      newSet.delete(accountId);
-    } else {
-      newSet.add(accountId);
-    }
-    setSelectedAccounts(newSet);
-  };
-
-  const selectAllClips = () => {
-    if (selectedClips.size === clips.length) {
-      setSelectedClips(new Set());
-    } else {
-      setSelectedClips(new Set(clips.map(c => c.id)));
-    }
-  };
-
-  const totalPosts = selectedClips.size * selectedAccounts.size;
-
-  const handleCreateCampaign = async () => {
-    if (!campaignName.trim()) {
-      alert('Please enter a campaign name');
-      return;
-    }
-
-    if (selectedClips.size === 0) {
-      alert('Please select at least one clip');
-      return;
-    }
-
-    if (selectedAccounts.size === 0) {
-      alert('Please select at least one account');
-      return;
-    }
-
-    const campaignData = {
-      name: campaignName,
-      clipIds: Array.from(selectedClips),
-      accountIds: Array.from(selectedAccounts),
-      scheduleType,
-      scheduledAt: scheduleType === 'scheduled' ? `${startDate}T${startTime}` : null,
-      frequency,
-      settings: {
-        rehash,
-      },
-    };
-
-    try {
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(campaignData),
-      });
-
-      if (res.ok) {
-        const { campaign } = await res.json();
-        window.location.href = `/campaigns/${campaign.id}`;
+    setSelectedAccounts((prev) => {
+      const next = new Set(prev);
+      if (next.has(accountId)) {
+        next.delete(accountId);
       } else {
-        alert('Failed to create campaign');
+        next.add(accountId);
       }
-    } catch {
-      alert('Error creating campaign');
+      return next;
+    });
+  };
+
+  const selectedClipItems = useMemo(
+    () => clips.filter((clip) => selectedClips.has(clip.id)),
+    [selectedClips, clips]
+  );
+
+  const activeAccounts = useMemo(() => {
+    return mockAccounts.filter((account) => selectedAccounts.has(account.id));
+  }, [selectedAccounts]);
+
+  useEffect(() => {
+    setSelectedAccounts((prev) => {
+      const validIds = new Set<string>();
+      selectedPlatforms.forEach((platform) => {
+        platformAccounts[platform].forEach((account) => {
+          if (prev.has(account.id)) {
+            validIds.add(account.id);
+          }
+        });
+      });
+      if (validIds.size === prev.size) {
+        return prev;
+      }
+      return validIds;
+    });
+  }, [selectedPlatforms, platformAccounts]);
+
+  const selectedAccountCount = activeAccounts.length;
+  const totalPosts = selectedClipItems.length * selectedAccountCount;
+
+  const platformBreakdown = useMemo(() => {
+    const map = new Map<PlatformKey, number>();
+    activeAccounts.forEach((account) => {
+      map.set(account.platform, (map.get(account.platform) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([platform, count]) => ({
+        platform,
+        posts: count * selectedClipItems.length,
+      }))
+      .sort((a, b) => b.posts - a.posts);
+  }, [activeAccounts, selectedClipItems.length]);
+
+  const clipDistribution = selectedClipItems.map((clip) => {
+    return {
+      clip,
+      accountCount: selectedAccountCount,
+    };
+  });
+
+  const timelinePreview = useMemo(
+    () => buildTimelinePreview(
+      frequency,
+      startDate,
+      startTime,
+      selectedClipItems,
+      activeAccounts,
+      customInterval,
+      customIntervalUnit
+    ),
+    [frequency, startDate, startTime, selectedClipItems, activeAccounts, customInterval, customIntervalUnit]
+  );
+
+  const actualPostsPerDay = postsPerDay === "custom" ? customPostsPerDay : 
+    postsPerDay === "1-3" ? 2 : 
+    postsPerDay === "5-10" ? 8 :
+    postsPerDay === "10-15" ? 12 :
+    postsPerDay === "15-20" ? 18 : 8;
+  
+  const totalReposts = campaignType === "repetitive" 
+    ? (campaignDuration === "continuous" ? 999 : actualPostsPerDay * parseInt(campaignDuration))
+    : 0;
+  const grandTotalPosts = campaignType === "one-time" ? totalPosts : totalReposts;
+
+  const scheduleLabel = useMemo(() => {
+    if (scheduleType === "now") {
+      if (campaignType === "one-time") {
+        const freqLabel = frequency === "all-once" ? "All at once" : getFrequencyLabel(frequency);
+        return `Starting immediately · ${freqLabel} · ${totalPosts} post${totalPosts !== 1 ? 's' : ''}`;
+      }
+      const duration = campaignDuration === "continuous" ? "Ongoing" : `${campaignDuration} days`;
+      return `Starting immediately · ${actualPostsPerDay} posts/day · ${duration} · ${grandTotalPosts} total posts`;
+    }
+    
+    const dateTimeStr = formatDateTime(startDate, startTime);
+    if (!dateTimeStr) return "Schedule pending";
+    
+    if (campaignType === "one-time") {
+      const freqLabel = frequency === "all-once" ? "All at once" : getFrequencyLabel(frequency);
+      return `Starts ${dateTimeStr} · ${freqLabel} · ${totalPosts} post${totalPosts !== 1 ? 's' : ''}`;
+    }
+    
+    const duration = campaignDuration === "continuous" ? "Ongoing" : `${campaignDuration} days`;
+    return `Starts ${dateTimeStr} · ${actualPostsPerDay} posts/day · ${duration} · ${grandTotalPosts} total posts`;
+  }, [scheduleType, campaignType, frequency, totalPosts, startDate, startTime, campaignDuration, actualPostsPerDay, grandTotalPosts]);
+
+  const detailsComplete = Boolean(campaignName.trim());
+  const contentComplete = selectedClipItems.length > 0;
+  const placementsComplete = selectedAccountCount > 0;
+  const scheduleComplete = scheduleType === "now" || (Boolean(startDate) && Boolean(startTime));
+
+  const completedSections = [detailsComplete, contentComplete, placementsComplete, scheduleComplete].filter(Boolean).length;
+  const progressPercentage = Math.round((completedSections / TOTAL_SECTIONS) * 100);
+
+  // Validation status for wizard stepper
+  const getSectionValidation = useMemo(() => {
+    return {
+      0: detailsComplete, // Campaign Name
+      1: contentComplete, // Select Content
+      2: placementsComplete, // Placements
+      3: captionTemplate.trim().length > 0, // Post Captions (has caption entered)
+      4: scheduleType === "now" || (scheduleType === "schedule" && Boolean(startDate) && Boolean(startTime)), // Schedule complete
+    };
+  }, [detailsComplete, contentComplete, placementsComplete, captionTemplate, scheduleType, startDate, startTime]);
+
+  const campaignNameError = showValidation && !detailsComplete;
+  const clipError = showValidation && !contentComplete;
+  const accountError = showValidation && !placementsComplete;
+  const scheduleError = showValidation && !scheduleComplete;
+
+  const launchDisabled =
+    launching || !detailsComplete || !contentComplete || !placementsComplete || !scheduleComplete;
+
+  const handleRequestReview = () => {
+    setShowValidation(true);
+    if (!launchDisabled) {
+      setReviewOpen(true);
     }
   };
 
-  const getPlatformColor = (platform: string) => {
-    const colors: Record<string, string> = {
-      tiktok: 'bg-pink-500',
-      youtube: 'bg-red-500',
-      instagram: 'bg-purple-500',
-      twitter: 'bg-blue-500',
-    };
-    return colors[platform] || 'bg-gray-500';
+  const handleConfirmLaunch = async () => {
+    setLaunching(true);
+    try {
+      // TODO: replace with real API call
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setToast({ message: `Campaign launched! ${campaignType === "repetitive" ? grandTotalPosts : totalPosts} posts scheduled.`, tone: "success" });
+      setReviewOpen(false);
+      // TODO: replace with router push to campaign detail
+    } catch (error) {
+      setToast({ message: "Something went wrong launching the campaign.", tone: "error" });
+    } finally {
+      setLaunching(false);
+    }
   };
+
+  const resetToast = () => setToast(null);
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <a href="/campaigns" className="text-gray-400 hover:text-white mb-4 inline-block">
-            ← Back to Campaigns
-          </a>
-          <h1 className="text-3xl font-bold mb-2">Create New Campaign</h1>
-          <p className="text-gray-400">Schedule and distribute your clips across multiple accounts</p>
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
+      {toast && (
+        <div
+          role="status"
+          className={clsx(
+            "fixed left-1/2 top-6 z-[100] -translate-x-1/2 transform rounded-full border px-5 py-2.5 shadow-lg backdrop-blur",
+            toast.tone === "success"
+              ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
+              : "border-red-400/40 bg-red-500/20 text-red-100"
+          )}
+        >
+          <button
+            type="button"
+            onClick={resetToast}
+            className="absolute right-3 top-2 rounded-full p-1 text-current transition hover:opacity-80"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+          <div className="pr-4 text-sm font-medium">{toast.message}</div>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Config */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Campaign Name */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <label className="block text-sm font-semibold mb-2">Campaign Name</label>
-              <input
-                type="text"
-                value={campaignName}
-                onChange={(e) => setCampaignName(e.target.value)}
-                placeholder="e.g., Weekly Content Drop"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-white transition"
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-10">
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/campaigns"
+              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition hover:text-white"
+            >
+              ← Back to Campaigns
+            </Link>
+            <div>
+              <h1 className="text-3xl font-semibold">Create New Campaign</h1>
+              <p className="text-sm text-zinc-400">
+                Build a cross-platform drop in one flow. Configure content, placements, and schedule with live preview.
+              </p>
+            </div>
+          </div>
+          <div className="flex w-full flex-col gap-2 lg:w-80">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-zinc-500">
+              <span>Progress</span>
+              <span>{progressPercentage}% Complete</span>
+            </div>
+            <div className="h-2 rounded-full bg-black">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 transition-all duration-500"
+                style={{ width: `${Math.max(progressPercentage, 6)}%` }}
               />
             </div>
+          </div>
+        </header>
 
-            {/* Select Clips */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Select Clips ({selectedClips.size}/{clips.length})</h2>
-                <button
-                  onClick={selectAllClips}
-                  className="text-sm text-gray-400 hover:text-white transition"
-                >
-                  {selectedClips.size === clips.length ? 'Deselect All' : 'Select All'}
-                </button>
-              </div>
-
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {clips.map((clip) => (
-                  <div
-                    key={clip.id}
-                    onClick={() => toggleClip(clip.id)}
-                    className={`
-                      flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition
-                      ${
-                        selectedClips.has(clip.id)
-                          ? 'bg-white bg-opacity-10 border-white'
-                          : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
-                      }
-                    `}
-                  >
-                    <div className="w-16 h-16 bg-zinc-700 rounded overflow-hidden flex-shrink-0 relative">
-                      {clip.thumbnail ? (
-                        <Image src={clip.thumbnail} alt={clip.title} fill className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                          No preview
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{clip.title}</div>
-                      <div className="text-sm text-gray-400">
-                        {Math.floor(clip.duration / 60)}:{(clip.duration % 60).toString().padStart(2, '0')}
-                        {clip.score && (
-                          <span className="ml-2">
-                            · Score: {clip.score}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {selectedClips.has(clip.id) && (
-                      <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Select Accounts */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4">Select Accounts ({selectedAccounts.size})</h2>
-
-              {accounts.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-                  <p className="mb-4">No accounts connected</p>
-                  <Link
-                    href="/accounts"
-                    className="inline-block px-4 py-2 bg-white text-black rounded-lg font-semibold hover:bg-gray-100 transition"
-                  >
-                    Connect Accounts
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {accounts
-                    .filter(acc => acc.isActive)
-                    .map((account) => (
-                      <div
-                        key={account.id}
-                        onClick={() => toggleAccount(account.id)}
-                        className={`
-                          flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition
-                          ${
-                            selectedAccounts.has(account.id)
-                              ? 'bg-white bg-opacity-10 border-white'
-                              : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
-                          }
-                        `}
-                      >
-                        <div className={`w-10 h-10 ${getPlatformColor(account.platform)} rounded flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                          {account.platform.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold truncate">{account.accountName}</div>
-                          <div className="text-sm text-gray-400 capitalize">{account.platform}</div>
-                        </div>
-                        {selectedAccounts.has(account.id) && (
-                          <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" />
-                        )}
-                      </div>
-                    ))}
-                </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="space-y-6">
+            {/* Campaign Name Input */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-zinc-200">Campaign Name *</label>
+              <input
+                value={campaignName}
+                onChange={(event) => setCampaignName(event.target.value)}
+                placeholder="e.g., Weekly Content Drop"
+                className={clsx(
+                  "w-full rounded-lg border px-4 py-3 text-sm transition focus:border-cyan-400 focus:outline-none",
+                  "bg-black/60",
+                  campaignNameError ? "border-red-500/60" : "border-white/20"
+                )}
+              />
+              {campaignNameError && (
+                <p className="mt-2 flex items-center gap-2 text-xs text-red-400">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Campaign name is required.
+                </p>
               )}
             </div>
 
-            {/* Schedule Settings */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4">Schedule</h2>
-
-              <div className="space-y-4">
-                {/* Schedule Type */}
-                <div className="flex gap-3">
+            {/* Section 1: Select Content */}
+            <section id="section-1" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
+              <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(1)}>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold">Select Content</h2>
+                  <p className="text-sm text-zinc-400">
+                    Choose clips to distribute. Selected clips will post across every chosen account.
+                  </p>
+                </div>
                   <button
-                    onClick={() => setScheduleType('immediate')}
-                    className={`
-                      flex-1 px-4 py-3 rounded-lg border transition font-semibold
-                      ${
-                        scheduleType === 'immediate'
-                          ? 'bg-white text-black border-white'
-                          : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
-                      }
-                    `}
-                  >
-                    Post Now
+                    type="button"
+                  className="ml-4 text-zinc-400 hover:text-zinc-200 transition"
+                  onClick={(e) => { e.stopPropagation(); toggleSection(1); }}
+                >
+                  <ChevronDown className={clsx("h-5 w-5 transition-transform", collapsedSections.has(1) && "rotate-180")} />
                   </button>
+              </header>
+              {!collapsedSections.has(1) && (
+              <div className="mt-6">
+
+              {selectedClipItems.length === 0 ? (
                   <button
-                    onClick={() => setScheduleType('scheduled')}
-                    className={`
-                      flex-1 px-4 py-3 rounded-lg border transition font-semibold
-                      ${
-                        scheduleType === 'scheduled'
-                          ? 'bg-white text-black border-white'
-                          : 'bg-zinc-800 border-zinc-700 hover:border-zinc-600'
-                      }
-                    `}
+                    type="button"
+                  onClick={() => setClipSelectionOpen(true)}
+                  className="w-full flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/25 bg-black/40 px-6 py-12 text-center transition hover:border-cyan-400/50 hover:bg-black/60"
+                >
+                  <Plus className="h-6 w-6 text-zinc-400" />
+                  <div>
+                    <p className="text-lg font-semibold text-white">Click to select clips</p>
+                    <p className="text-sm text-zinc-400 mt-1">Choose clips from your library to add to this campaign</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white">{selectedClipItems.length} clip{selectedClipItems.length !== 1 ? 's' : ''} selected</p>
+                    <button
+                      type="button"
+                      onClick={() => setClipSelectionOpen(true)}
+                      className="text-sm font-semibold text-cyan-300 hover:text-cyan-100 transition"
+                    >
+                      Edit Selection
+                    </button>
+                </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {selectedClipItems.slice(0, showAllSelectedClips ? undefined : 4).map((clip) => (
+                      <div
+                        key={clip.id}
+                        className="group relative overflow-hidden rounded-xl border border-white/20 bg-black/60 p-2 hover:border-cyan-400/40 transition"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleClip(clip.id)}
+                          className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition hover:bg-red-500"
+                          title="Remove clip"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <div className="relative mb-2 overflow-hidden rounded-lg bg-black">
+                          <div className="flex h-24 items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black">
+                            <Play className="h-6 w-6 text-zinc-500" />
+                            </div>
+                            </div>
+                        <h3 className="truncate text-xs font-medium text-white">{clip.title}</h3>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">{formatDuration(clip.duration)}</p>
+                            </div>
+                    ))}
+                              </div>
+                  {selectedClipItems.length > 4 && !showAllSelectedClips && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllSelectedClips(true)}
+                      className="w-full py-2.5 text-sm font-semibold text-cyan-300 hover:text-cyan-100 transition"
+                    >
+                      Show {selectedClipItems.length - 4} more clips
+                        </button>
+                  )}
+                  {showAllSelectedClips && selectedClipItems.length > 4 && (
+                      <button
+                        type="button"
+                      onClick={() => setShowAllSelectedClips(false)}
+                      className="w-full py-2.5 text-sm font-semibold text-cyan-300 hover:text-cyan-100 transition"
+                      >
+                      Show less
+                      </button>
+                  )}
+                    </div>
+              )}
+
+              {clipError && (
+                <p className="mt-4 flex items-center gap-2 text-xs text-red-400">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Select at least one clip to continue.
+                </p>
+              )}
+              </div>
+              )}
+            </section>
+
+            {/* Section 2: Placements */}
+            <section id="section-2" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
+              <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(2)}>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold">Placements</h2>
+                  <p className="text-sm text-zinc-400">Select platforms and accounts for distribution.</p>
+                </div>
+                <button
+                  type="button"
+                  className="ml-4 text-zinc-400 hover:text-zinc-200 transition"
+                  onClick={(e) => { e.stopPropagation(); toggleSection(2); }}
+                >
+                  <ChevronDown className={clsx("h-5 w-5 transition-transform", collapsedSections.has(2) && "rotate-180")} />
+                </button>
+              </header>
+              {!collapsedSections.has(2) && (
+              <div className="mt-6">
+
+              {mockAccounts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/20 bg-black/60/40 p-10 text-center">
+                  <AlertTriangle className="h-10 w-10 text-zinc-500" />
+                  <p className="text-sm text-zinc-300">No accounts connected</p>
+                  <p className="text-xs text-zinc-500">Connect your social accounts to start posting.</p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-full border border-cyan-400/60 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-400"
                   >
-                    Schedule
+                    <UserPlus className="h-4 w-4" />
+                    Connect Accounts
                   </button>
                 </div>
+              ) : (
+                <div className="space-y-6">
+                      <div className="space-y-3">
+                          <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-1">Select Platforms</p>
+                          <p className="text-xs text-zinc-400">Choose which platforms to post on</p>
+                          </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {Object.entries(platformAccounts).map(([platformKey, accounts]) => {
+                          const platform = platformKey as PlatformKey;
+                          const isActive = selectedPlatforms.has(platform);
+                          const hasAccounts = accounts.length > 0;
+                          return (
+                            <button
+                              key={platform}
+                              type="button"
+                              onClick={() => hasAccounts && togglePlatform(platform)}
+                                disabled={!hasAccounts}
+                              className={clsx(
+                                  "flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition",
+                                "bg-black/60",
+                                  !hasAccounts && "cursor-not-allowed border-dashed border-white/25 opacity-60",
+                                  hasAccounts && isActive && "border-cyan-400/80 bg-cyan-500/10 text-white",
+                                  hasAccounts && !isActive && "border-white/20 hover:border-cyan-400/40"
+                                )}
+                              >
+                                <span
+                                  className={clsx(
+                                    "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border transition",
+                                    isActive ? "border-cyan-400 bg-cyan-500/10" : "border-white/25"
+                                  )}
+                                >
+                                  {isActive && (
+                                    <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+                                  )}
+                                </span>
+                                <span className={clsx("h-2.5 w-2.5 flex-shrink-0 rounded-full", PLATFORM_META[platform].dotClass)} />
+                                <div className="flex-1">
+                                  <p className="text-sm font-semibold">{PLATFORM_META[platform].label}</p>
+                                  <p className="text-xs text-zinc-400">
+                                    {hasAccounts ? `${accounts.length} account${accounts.length === 1 ? "" : "s"} available` : "No accounts"}
+                                  </p>
+                                </div>
+                            </button>
+                          );
+                        })}
+                        </div>
+                      </div>
 
-                {/* Date/Time Inputs */}
-                {scheduleType === 'scheduled' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm mb-2 text-gray-400">Start Date</label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-white transition"
-                      />
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-1">Select Accounts</p>
+                          <p className="text-xs text-zinc-400">Choose specific accounts from your selected platforms</p>
+                        </div>
+                        {selectedPlatforms.size === 0 ? (
+                          <div className="rounded-xl border border-dashed border-white/25 bg-black/60 px-5 py-6 text-center">
+                            <p className="text-sm font-medium text-zinc-300 mb-1">No platforms selected</p>
+                            <p className="text-xs text-zinc-500">Select at least one platform above to choose accounts</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                      {Array.from(selectedPlatforms).map((platform) => {
+                        const accounts = platformAccounts[platform];
+                              const isOpen = openAccountDropdown === platform;
+                              const selectedAccountsForPlatform = accounts.filter(acc => selectedAccounts.has(acc.id));
+                              
+                        if (accounts.length === 0) {
+                          return (
+                            <div
+                              key={`${platform}-empty`}
+                                    className="rounded-xl border border-dashed border-white/25 bg-black/60 p-4 text-sm text-zinc-400"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <AlertTriangle className="h-4 w-4 text-zinc-500" />
+                                      <span>No accounts connected for {PLATFORM_META[platform].label}</span>
+                                    </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                                <div key={platform} className="rounded-xl border border-white/20 bg-black/60 overflow-hidden">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenAccountDropdown(isOpen ? null : platform)}
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <span className={clsx("h-2.5 w-2.5 rounded-full", PLATFORM_META[platform].dotClass)} />
+                                      <div>
+                                        <h3 className="text-sm font-semibold text-zinc-200">
+                                          {PLATFORM_META[platform].label}
+                            </h3>
+                                        <p className="text-xs text-zinc-400">
+                                          {selectedAccountsForPlatform.length} of {accounts.length} selected
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <ChevronDown className={clsx(
+                                      "h-4 w-4 text-zinc-500 transition-transform",
+                                      isOpen && "rotate-180"
+                                    )} />
+                                  </button>
+                                  
+                                  {isOpen && (
+                                    <div className="border-t border-white/10">
+                                      <div className="p-2 border-b border-white/20">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const allAccountIds = accounts.map(acc => acc.id);
+                                            const allSelected = allAccountIds.every(id => selectedAccounts.has(id));
+                                            
+                                            setSelectedAccounts(prev => {
+                                              const next = new Set(prev);
+                                              if (allSelected) {
+                                                // Deselect all accounts from this platform
+                                                allAccountIds.forEach(id => next.delete(id));
+                                              } else {
+                                                // Select all accounts from this platform
+                                                allAccountIds.forEach(id => next.add(id));
+                                              }
+                                              return next;
+                                            });
+                                          }}
+                                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-400/30 hover:bg-cyan-500/15 hover:border-cyan-400/50 transition"
+                                        >
+                                          {accounts.every(acc => selectedAccounts.has(acc.id)) ? (
+                                            <>
+                                              <CheckCircle2 className="h-3.5 w-3.5" />
+                                              Deselect All
+                                            </>
+                                          ) : (
+                                            <>
+                                              <CheckCircle2 className="h-3.5 w-3.5" />
+                                              Select All Accounts
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+                                      <div className="p-2 space-y-1">
+                              {accounts.map((account) => {
+                                const checked = selectedAccounts.has(account.id);
+                                return (
+                                  <label
+                                    key={account.id}
+                                    className={clsx(
+                                                "flex cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-sm transition",
+                                      checked
+                                                  ? "bg-cyan-500/10"
+                                                  : "hover:bg-white/[0.03]"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <span
+                                        className={clsx(
+                                                    "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border",
+                                                    checked ? "border-cyan-400 bg-cyan-500/10" : "border-white/25"
+                                                  )}
+                                                >
+                                                  {checked && (
+                                                    <span className="h-2 w-2 rounded-sm bg-cyan-400" />
+                                                  )}
+                                      </span>
+                                      <div>
+                                        <p className="font-medium text-white">{account.accountName}</p>
+                                        <p className="text-xs text-zinc-400">
+                                          {formatCompactNumber(account.followers)} followers
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleAccount(account.id)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                                    </div>
+                                  )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div>
-                      <label className="block text-sm mb-2 text-gray-400">Start Time</label>
+                  )}
+                      </div>
+
+                  {accountError && (
+                    <p className="flex items-center gap-2 text-xs text-red-400">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      Select at least one account to continue.
+                    </p>
+                  )}
+                </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Section 3: Post Captions & Details */}
+            <section id="section-3" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
+              <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(3)}>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold">Post Captions &amp; Details</h2>
+                  <p className="text-sm text-zinc-400">Customize how your content appears on each platform</p>
+                </div>
+                <button
+                  type="button"
+                  className="ml-4 text-zinc-400 hover:text-zinc-200 transition"
+                  onClick={(e) => { e.stopPropagation(); toggleSection(3); }}
+                >
+                  <ChevronDown className={clsx("h-5 w-5 transition-transform", collapsedSections.has(3) && "rotate-180")} />
+                </button>
+              </header>
+              {!collapsedSections.has(3) && (
+                <div className="mt-6 space-y-6">
+                  {/* Video Captions - Full Width */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-sm font-medium text-zinc-200">Video Captions</label>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={clsx(
+                            "text-xs font-medium",
+                            captionTemplate.length === 0
+                              ? "text-zinc-500"
+                              : captionTemplate.length / 2200 < 0.8
+                                ? "text-green-400"
+                                : captionTemplate.length / 2200 < 0.95
+                                  ? "text-yellow-400"
+                                  : "text-red-400"
+                          )}
+                        >
+                          {captionTemplate.length}/2200
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPlatformLimits(!showPlatformLimits)}
+                          className="text-xs text-cyan-400 transition hover:text-cyan-200"
+                        >
+                          Platform limits {showPlatformLimits ? "▲" : "▼"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {showPlatformLimits && (
+                      <div className="mb-3 space-y-1 rounded-lg border border-white/20 bg-black/60 p-3 text-xs">
+                        <p className="mb-2 font-medium text-zinc-300">Character Limits:</p>
+                        <p className="text-zinc-400">• TikTok: 2,200 chars</p>
+                        <p className="text-zinc-400">• YouTube: 5,000 chars</p>
+                        <p className="text-zinc-400">• Instagram: 2,200 chars</p>
+                        <p className="text-zinc-400">• Twitter: 280 chars</p>
+                      </div>
+                    )}
+
+                    <textarea
+                      value={captionTemplate}
+                      onChange={(e) => setCaptionTemplate(e.target.value)}
+                      placeholder="Check this out! 🔥"
+                      className="min-h-[120px] w-full resize-y rounded-lg border border-white/20 bg-black/60 px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Caption Automation */}
+                  <div className="space-y-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
                       <input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-white transition"
+                        type="checkbox"
+                        checked={aiCaptionVariations}
+                        onChange={(e) => setAiCaptionVariations(e.target.checked)}
+                        className="mt-0.5 h-5 w-5 rounded border-white/20 bg-black text-cyan-400 focus:ring-cyan-300"
                       />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-zinc-200">
+                          AI Caption Variations <span className="text-cyan-400 text-xs">(Recommended)</span>
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">Generate unique captions for each repost</p>
+
+                        {aiCaptionVariations && (
+                          <div className="mt-4 space-y-4">
+                            <div>
+                              <label className="text-xs font-medium text-zinc-300 block mb-2">Variation Style:</label>
+                              <select
+                                value={variationStyle}
+                                onChange={(e) => setVariationStyle(e.target.value as any)}
+                                className="w-full appearance-none rounded-lg border border-white/20 bg-black/60 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                              >
+                                <option value="similar">Similar Meaning (keeps your message, changes wording)</option>
+                                <option value="hooks">Different Hooks (changes opening, keeps body)</option>
+                                <option value="rewrite">Complete Rewrite (totally unique each time)</option>
+                                <option value="template-ai">Template + AI (uses your template as base, adds variety)</option>
+                              </select>
+                            </div>
+
+                            <div className="p-4 rounded-lg bg-black/40 border border-white/20">
+                              <p className="text-xs font-medium text-zinc-400 mb-3">Preview Examples:</p>
+                              <div className="space-y-2">
+                                <div className="text-xs">
+                                  <span className="text-zinc-500">Original:</span>{" "}
+                                  <span className="text-zinc-200">{AI_VARIATION_EXAMPLES.original}</span>
+                                </div>
+                                {AI_VARIATION_EXAMPLES.variants.map((variant, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <span className="text-zinc-500">Variant {idx + 1}:</span>{" "}
+                                    <span className="text-zinc-300">{variant}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </label>
+
+                    <div className="rounded-lg border border-white/20 bg-black/40 px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium text-zinc-300">Advanced options</p>
+                          <p className="text-[11px] text-zinc-500">Rotate hashtags, emojis, and CTAs.</p>
+                        </div>
+                  <button
+                    type="button"
+                          onClick={() => setShowAdvancedAutomation((prev) => !prev)}
+                    className={clsx(
+                            "inline-flex items-center gap-2 text-xs font-semibold transition",
+                            advancedAutomationActive ? "text-cyan-300" : "text-zinc-400 hover:text-zinc-200"
+                          )}
+                        >
+                          {advancedAutomationPanelOpen ? "Hide" : "Show"}
+                          <ChevronDown
+                            className={clsx(
+                              "h-4 w-4 transition-transform",
+                              advancedAutomationPanelOpen ? "rotate-180" : "rotate-0"
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {advancedAutomationPanelOpen && (
+                      <div className="space-y-4 border-t border-white/20 pt-5">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={hashtagRotation}
+                            onChange={(e) => setHashtagRotation(e.target.checked)}
+                            className="mt-0.5 h-5 w-5 rounded border-white/20 bg-black text-cyan-400 focus:ring-cyan-300"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-zinc-200">Hashtag Rotation</p>
+                            <p className="text-xs text-zinc-400 mt-1">Cycle through different hashtag sets to avoid spam</p>
+
+                            {hashtagRotation && (
+                              <div className="mt-4 space-y-2">
+                                {hashtagSets.map((set, idx) => (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    <span className="w-16 text-xs text-zinc-500">Set {idx + 1}:</span>
+                                    <input
+                                      type="text"
+                                      value={set}
+                                      onChange={(e) => {
+                                        const newSets = [...hashtagSets];
+                                        newSets[idx] = e.target.value;
+                                        setHashtagSets(newSets);
+                                      }}
+                                      placeholder="#fyp #viral #trending"
+                                      className="flex-1 rounded-lg border border-white/20 bg-black/60 px-3 py-2 text-xs text-white placeholder:text-zinc-500 focus:border-cyan-400 focus:outline-none"
+                                    />
+                                    {hashtagSets.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setHashtagSets(hashtagSets.filter((_, i) => i !== idx))}
+                                        className="text-red-400 hover:text-red-300 transition"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setHashtagSets([...hashtagSets, ""])}
+                                  className="text-xs font-medium text-cyan-400 transition hover:text-cyan-300"
+                                >
+                                  + Add Set
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </label>
+
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={emojiRandomization}
+                            onChange={(e) => setEmojiRandomization(e.target.checked)}
+                            className="h-5 w-5 rounded border-white/20 bg-black text-cyan-400 focus:ring-cyan-300"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-zinc-200">Emoji Randomization</p>
+                            <p className="text-xs text-zinc-400 mt-1">Randomly add/change emojis in captions (🔥→💯→🎯)</p>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={ctaRotation}
+                            onChange={(e) => setCtaRotation(e.target.checked)}
+                            className="mt-0.5 h-5 w-5 rounded border-white/20 bg-black text-cyan-400 focus:ring-cyan-300"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-zinc-200">Call-to-Action Rotation</p>
+                            <p className="text-xs text-zinc-400 mt-1">Rotate CTAs: &quot;Follow for more&quot;, &quot;Like if you agree&quot;, etc.</p>
+
+                            {ctaRotation && (
+                              <div className="mt-4 space-y-3">
+                                <p className="text-xs font-medium text-zinc-300">CTA Options:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {CTA_OPTIONS.map((cta) => (
+                                    <button
+                                      key={cta}
+                                      type="button"
+                                      onClick={() => {
+                                        if (selectedCTAs.includes(cta)) {
+                                          setSelectedCTAs(selectedCTAs.filter((c) => c !== cta));
+                                        } else {
+                                          setSelectedCTAs([...selectedCTAs, cta]);
+                                        }
+                                      }}
+                                      className={clsx(
+                                        "px-3 py-1.5 rounded-lg border text-xs transition",
+                                        selectedCTAs.includes(cta)
+                                          ? "border-cyan-400/60 bg-black text-cyan-200"
+                                          : "bg-black/50 border-white/20 text-zinc-400 hover:border-white/30"
+                                      )}
+                                    >
+                                      {cta}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview */}
+                  <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-white/20 bg-black p-5 sm:flex-row sm:items-center">
+                    <div>
+                      <h3 className="text-sm font-semibold text-zinc-200">Preview</h3>
+                      <p className="text-xs text-zinc-400">Open a quick look at your captions in the right column.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCaptionPreview((prev) => !prev)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-200 transition hover:border-cyan-400 hover:text-cyan-100"
+                    >
+                      {showCaptionPreview ? "Hide Preview" : "Show Preview"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Section 4: Schedule & Settings */}
+            <section id="section-4" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
+              <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(4)}>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold">Schedule &amp; Settings</h2>
+                <p className="text-sm text-zinc-400">Plan when your clips go live and enable enhancements.</p>
+                </div>
+                <button
+                  type="button"
+                  className="ml-4 text-zinc-400 hover:text-zinc-200 transition"
+                  onClick={(e) => { e.stopPropagation(); toggleSection(4); }}
+                >
+                  <ChevronDown className={clsx("h-5 w-5 transition-transform", collapsedSections.has(4) && "rotate-180")} />
+                </button>
+              </header>
+              {!collapsedSections.has(4) && (
+                <div className="space-y-6 mt-6">
+                {/* Campaign Type - Dropdown */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-200 mb-2">
+                    Campaign Type
+                    <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={campaignType}
+                      onChange={(e) => setCampaignType(e.target.value as CampaignType)}
+                      className="w-full appearance-none rounded-xl border border-white/20 bg-black px-4 py-3 pr-10 text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
+                    >
+                      <option value="repetitive">⭐ Repetitive (Recommended) - Daily auto-repurpose for continuous growth</option>
+                      <option value="one-time">One-Time Drop - Post clips once and finish</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Posting Schedule - Simplified */}
+                <div className="border-t border-white/10 pt-6">
+                  <h3 className="text-sm font-medium text-zinc-200 mb-4">Schedule Campaign</h3>
+                  
+                  {/* Start Date & Time - Full Width */}
+                  <div className="mb-4">
+                    <label className="text-xs font-medium text-zinc-400 block mb-2">Start date</label>
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
+                        <Calendar className="h-4 w-4 text-zinc-400" />
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
+                        <Clock className="h-4 w-4 text-zinc-400" />
+                        <input
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
+                        />
+                        <span className="text-xs text-zinc-400">
+                          {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* End Date & Time - Full Width */}
+                  <div>
+                    <label className="text-xs font-medium text-zinc-400 block mb-2">End date</label>
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
+                        <Calendar className="h-4 w-4 text-zinc-400" />
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
+                        <Clock className="h-4 w-4 text-zinc-400" />
+                        <input
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
+                        />
+                        <span className="text-xs text-zinc-400">
+                          {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progressive Disclosure: Repetitive Campaign Settings */}
+                {campaignType === "repetitive" && (
+                  <div className="space-y-6 border-t border-white/10 pt-6">
+
+                    {/* Daily Reposts - Dropdown with Presets */}
+                  <div>
+                      <label className="text-sm font-medium text-zinc-200 block mb-3">
+                        Daily Reposts <span className="text-zinc-500 font-normal">(Per account)</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={customPostsPerDay === 1 || customPostsPerDay <= 4 ? "1-4" :
+                                 customPostsPerDay <= 10 ? "5-10" :
+                                 customPostsPerDay <= 15 ? "10-15" :
+                                 customPostsPerDay <= 20 ? "15-20" : "custom"}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "1-4") setCustomPostsPerDay(2);
+                            else if (value === "5-10") setCustomPostsPerDay(7);
+                            else if (value === "10-15") setCustomPostsPerDay(12);
+                            else if (value === "15-20") setCustomPostsPerDay(17);
+                          }}
+                          className="w-full appearance-none rounded-xl border border-white/20 bg-black px-4 py-3 pr-10 text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
+                        >
+                          <option value="1-4">1-4 posts/day (Good for starting out)</option>
+                          <option value="5-10">5-10 posts/day (Ideal for growth/scale)</option>
+                          <option value="10-15">10-15 posts/day (Scaling but a little risky)</option>
+                          <option value="15-20">15-20 posts/day (Risky of getting flagged)</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
+                      </div>
+                      
+                      {/* Fine-tune control */}
+                      <div className="mt-4 flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setCustomPostsPerDay(Math.max(1, customPostsPerDay - 1))}
+                          className="flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 bg-black text-white hover:border-cyan-400 hover:bg-cyan-500/10 transition"
+                        >
+                          −
+                        </button>
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={customPostsPerDay}
+                            onChange={(e) => setCustomPostsPerDay(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                            className="w-full text-center px-4 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white text-lg font-semibold focus:border-cyan-400 focus:outline-none"
+                          />
+                    </div>
+                        <button
+                          type="button"
+                          onClick={() => setCustomPostsPerDay(Math.min(20, customPostsPerDay + 1))}
+                          className="flex items-center justify-center w-10 h-10 rounded-lg border border-white/20 bg-black text-white hover:border-cyan-400 hover:bg-cyan-500/10 transition"
+                        >
+                          +
+                        </button>
+                  </div>
+                      <p className="text-xs text-zinc-400 mt-2 text-center">
+                        This will result in{" "}
+                        <span className="font-semibold text-cyan-400">
+                          {(() => {
+                            const startDateObj = new Date(startDate);
+                            const endDateObj = new Date(endDate);
+                            const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
+                            const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+                            const accounts = activeAccounts.length || 1;
+                            return (customPostsPerDay * days * accounts).toLocaleString();
+                          })()}
+                        </span>{" "}
+                        total posts over the campaign
+                      </p>
+                </div>
+
+                    {/* Auto-Repurpose Method - Dropdown */}
+                    <div className="border-t border-white/10 pt-6">
+                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-200 mb-2">
+                        Auto-Repurpose Method
+                        <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={variationMethod}
+                          onChange={(e) => setVariationMethod(e.target.value as VariationMethod)}
+                          className="w-full appearance-none rounded-xl border border-white/20 bg-black px-4 py-3 pr-10 text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
+                        >
+                          <option value="ai-powered">✨ AI-Powered (Recommended) - Automatic smart variations for each repost</option>
+                          <option value="manual">Manual - Repost the exact same content</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
+                      </div>
+
+                      {/* Conditional: Timing Randomization Toggle for AI-Powered */}
+                      {variationMethod === "ai-powered" && (
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between p-4 rounded-xl border border-white/20 bg-black/40">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-white">Timing Randomization</p>
+                                <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                              </div>
+                              <p className="text-xs text-zinc-400 mt-1">Add ±10-20% time variance to mimic human posting patterns</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setTimingRandomization(!timingRandomization)}
+                              className={clsx(
+                                "relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black ml-4",
+                                timingRandomization ? "bg-cyan-500" : "bg-zinc-700"
+                              )}
+                            >
+                              <span
+                                className={clsx(
+                                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                  timingRandomization ? "translate-x-5" : "translate-x-0"
+                                )}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Manual Selection - Flat Grid Layout */}
+                      {variationMethod === "manual" && (
+                        <div className="space-y-5">
+                          {/* Variation Intensity at Top */}
+                          <div className="flex items-center justify-between p-4 rounded-lg bg-black/40">
+                            <div>
+                              <p className="text-sm font-medium text-white">
+                                {[mirrorFlip, adjustSpeed, applyFilters, changeGrading, cropZoom, addVignette, rotateVideo, changeMusic, adjustPitch, addSoundEffects, changeVolume, uniqueCaptions, rotateHashtags, changeEmojis, varyCTA].filter(Boolean).length} modifications selected
+                              </p>
+                              <p className="text-xs text-zinc-400 mt-0.5">Choose variation intensity and specific changes</p>
+                            </div>
+                            <select
+                              value={variationIntensity}
+                              onChange={(e) => setVariationIntensity(e.target.value as VariationIntensity)}
+                              className="appearance-none rounded-lg border border-white/20 bg-black px-3 py-1.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                            >
+                              <option value="light">Light</option>
+                              <option value="medium">Medium</option>
+                              <option value="aggressive">Aggressive</option>
+                            </select>
+                          </div>
+
+                          {/* Video Modifications */}
+                      <div>
+                            <h4 className="text-sm font-medium text-zinc-200 mb-3">Video Modifications</h4>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={mirrorFlip} onChange={(e) => setMirrorFlip(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Mirror/flip video</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={adjustSpeed} onChange={(e) => setAdjustSpeed(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Adjust speed (97-103%)</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={applyFilters} onChange={(e) => setApplyFilters(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Apply color filters</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={changeGrading} onChange={(e) => setChangeGrading(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Change color grading</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={cropZoom} onChange={(e) => setCropZoom(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Crop/zoom (2-5%)</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={addVignette} onChange={(e) => setAddVignette(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Add vignette/borders</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={rotateVideo} onChange={(e) => setRotateVideo(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Rotate (±1-2°)</span>
+                    </label>
+                      </div>
+                </div>
+
+                          {/* Audio Modifications */}
+                          <div>
+                            <h4 className="text-sm font-medium text-zinc-200 mb-3">Audio Modifications</h4>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={changeMusic} onChange={(e) => setChangeMusic(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Change background music</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={adjustPitch} onChange={(e) => setAdjustPitch(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Adjust audio pitch (±5%)</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={addSoundEffects} onChange={(e) => setAddSoundEffects(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Add sound effects</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={changeVolume} onChange={(e) => setChangeVolume(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Change volume levels</span>
+                    </label>
+                  </div>
+                </div>
+
+                          {/* Text & Captions */}
+                          <div>
+                            <h4 className="text-sm font-medium text-zinc-200 mb-3">Text & Captions</h4>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={uniqueCaptions} onChange={(e) => setUniqueCaptions(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Generate unique captions</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={rotateHashtags} onChange={(e) => setRotateHashtags(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Rotate hashtag sets</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={changeEmojis} onChange={(e) => setChangeEmojis(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Change emoji combinations</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white">
+                                <input type="checkbox" checked={varyCTA} onChange={(e) => setVaryCTA(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-black text-cyan-400" />
+                                <span className="text-zinc-300">Vary call-to-action text</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Frequency */}
-                <div>
-                  <label className="block text-sm mb-2 text-gray-400">Posting Frequency</label>
-                  <select
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value as 'once' | 'daily' | 'hourly')}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-white transition"
-                  >
-                    <option value="once">Post All Once</option>
-                    <option value="hourly">Hourly Distribution</option>
-                    <option value="daily">Daily Distribution</option>
-                  </select>
-                </div>
-
-                {/* Rehash Toggle */}
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rehash}
-                    onChange={(e) => setRehash(e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <div>
-                    <div className="font-semibold">Enable Auto-Rehash</div>
-                    <div className="text-sm text-gray-400">
-                      Automatically modify clips to bypass duplicate content filters
+                {/* Timeline Preview */}
+                {timelinePreview.length > 0 && (
+                      <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Posting Timeline</h3>
+                    <p className="text-xs text-zinc-400 mb-3">Preview of when your content will go live</p>
+                    <div className="max-h-[300px] overflow-y-auto rounded-xl border border-white/20 bg-black/60 p-4">
+                      <div className="space-y-2">
+                        {timelinePreview.slice(0, showAllTimeline ? undefined : 3).map((post) => (
+                          <div
+                            key={`${post.index}-${post.clipTitle}`}
+                            className="flex items-start gap-3 hover:bg-white/[0.02] rounded-lg p-2 -mx-2 transition"
+                          >
+                            <Circle className="h-2 w-2 flex-shrink-0 text-cyan-400 mt-1.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-white">
+                                Post {post.index} · Clip: "{post.clipTitle.length > 20 ? post.clipTitle.slice(0, 20) + '...' : post.clipTitle}"
+                              </p>
+                              <p className="text-xs text-zinc-400 mt-0.5">
+                                → {post.platform} {post.accountName}
+                        </p>
+                      </div>
+                            <span className="text-xs text-zinc-500 flex-shrink-0">{post.datetime}</span>
+                          </div>
+                        ))}
+                        {timelinePreview.length > 3 && !showAllTimeline && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllTimeline(true)}
+                            className="w-full text-center text-xs text-cyan-300 hover:text-cyan-100 py-2 transition"
+                          >
+                            View All {timelinePreview.length} Posts
+                          </button>
+                        )}
+                        {showAllTimeline && timelinePreview.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllTimeline(false)}
+                            className="w-full text-center text-xs text-cyan-300 hover:text-cyan-100 py-2 transition"
+                          >
+                            Show Less
+                          </button>
+                )}
+              </div>
+                      <div className="mt-4 pt-3 border-t border-white/20 text-xs text-zinc-400">
+                        Campaign runs for {(() => {
+                          if (frequency === "all-once" || timelinePreview.length <= 1) return "instant deployment";
+                          const first = new Date(timelinePreview[0].datetime);
+                          const last = new Date(timelinePreview[timelinePreview.length - 1].datetime);
+                          const diffMs = last.getTime() - first.getTime();
+                          const hours = Math.round(diffMs / (1000 * 60 * 60));
+                          const days = Math.floor(hours / 24);
+                          if (days > 0) return `${days} day${days !== 1 ? 's' : ''}`;
+                          return `${hours} hour${hours !== 1 ? 's' : ''}`;
+                        })()}
+                      </div>
                     </div>
                   </div>
-                </label>
-              </div>
-            </div>
+                )}
+                </div>
+              )}
+            </section>
           </div>
 
-          {/* Summary Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 sticky top-8">
-              <h2 className="text-lg font-semibold mb-4">Campaign Summary</h2>
+          {/* Sidebar */}
+          <aside className="sticky top-6 self-start space-y-6">
+            {/* Wizard Stepper Navigation */}
+            <div className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-white mb-4">Campaign Steps</h3>
+              <nav className="space-y-1">
+                {[
+                  { id: 0, title: 'Campaign Name', description: 'Name your campaign' },
+                  { id: 1, title: 'Select Content', description: 'Choose clips' },
+                  { id: 2, title: 'Placements', description: 'Pick platforms & accounts' },
+                  { id: 3, title: 'Post Captions', description: 'Customize captions' },
+                  { id: 4, title: 'Schedule & Settings', description: 'Set posting schedule' },
+                ].map((step, index) => {
+                  const isCompleted = getSectionValidation[step.id as keyof typeof getSectionValidation];
+                  const isActive = activeSectionIndex === step.id;
+                  const isExpanded = !collapsedSections.has(step.id);
+                  
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => scrollToSection(step.id)}
+                      className={clsx(
+                        "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
+                        isActive 
+                          ? "bg-cyan-500/10 border border-cyan-400/30" 
+                          : "hover:bg-white/5 border border-transparent"
+                      )}
+                    >
+                      {/* Step Number / Check Icon */}
+                      <div className={clsx(
+                        "flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-semibold transition-all",
+                        isCompleted 
+                          ? "border-green-400 bg-green-400/10 text-green-400"
+                          : isActive
+                            ? "border-cyan-400 bg-cyan-400/10 text-cyan-400"
+                            : "border-white/20 text-zinc-400"
+                      )}>
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <span>{index + 1}</span>
+                        )}
+                      </div>
+                      
+                      {/* Step Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={clsx(
+                            "text-sm font-medium transition-colors",
+                            isActive ? "text-white" : "text-zinc-300"
+                          )}>
+                            {step.title}
+                          </p>
+                          {isExpanded && (
+                            <ChevronDown className="h-3 w-3 text-cyan-400" />
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5">{step.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
 
-              <div className="space-y-4 mb-6">
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">Total Posts</div>
-                  <div className="text-3xl font-bold">{totalPosts}</div>
+            {showCaptionPreview && (
+              <div className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Post Preview</h2>
+                    <p className="text-xs text-zinc-400">Live look at your caption and hashtags.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCaptionPreview(false)}
+                    className="text-xs text-zinc-400 transition hover:text-zinc-200"
+                  >
+                    Close
+                  </button>
                 </div>
+                <div className="relative bg-black rounded-xl overflow-hidden" style={{ aspectRatio: "9/16", maxWidth: "300px", margin: "0 auto" }}>
+                  {/* Video Area */}
+                  <div className="relative w-full h-full bg-black flex items-center justify-center">
+                    {selectedClipItems.length > 0 ? (
+                      <div className="relative w-full h-full">
+                        <video
+                          className="w-full h-full object-cover"
+                          poster={selectedClipItems[0].thumbnail || undefined}
+                          controls
+                          muted
+                          onClick={(e) => {
+                            const video = e.target as HTMLVideoElement;
+                            const overlay = document.getElementById('play-overlay');
+                            if (video.paused) {
+                              video.play();
+                              if (overlay) {
+                                overlay.style.opacity = '0';
+                                overlay.style.pointerEvents = 'none';
+                              }
+                            } else {
+                              video.pause();
+                              if (overlay) {
+                                overlay.style.opacity = '1';
+                                overlay.style.pointerEvents = 'auto';
+                              }
+                            }
+                          }}
+                          onPause={(e) => {
+                            const overlay = document.getElementById('play-overlay');
+                            if (overlay) {
+                              overlay.style.opacity = '1';
+                              overlay.style.pointerEvents = 'auto';
+                            }
+                          }}
+                          onPlay={(e) => {
+                            const overlay = document.getElementById('play-overlay');
+                            if (overlay) {
+                              overlay.style.opacity = '0';
+                              overlay.style.pointerEvents = 'none';
+                            }
+                          }}
+                        >
+                          <source src={selectedClipItems[0].clipUrl || undefined} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                        {/* Play button overlay - only show when paused */}
+                        <div 
+                          className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none transition-opacity duration-300"
+                          id="play-overlay"
+                        >
+                          <button 
+                            className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center hover:bg-white/40 transition pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const video = e.currentTarget.parentElement?.parentElement?.querySelector('video') as HTMLVideoElement;
+                              const overlay = document.getElementById('play-overlay');
+                              if (video && overlay) {
+                                video.play();
+                                overlay.style.opacity = '0';
+                                overlay.style.pointerEvents = 'none';
+                              }
+                            }}
+                          >
+                            <Play className="w-6 h-6 text-white ml-0.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-black/70 flex items-center justify-center">
+                        <Video className="h-16 w-16 text-zinc-600" />
+                      </div>
+                    )}
+                  </div>
 
-                <div className="border-t border-zinc-800 pt-4">
-                  <div className="text-sm text-gray-400 mb-2">Breakdown</div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Clips selected:</span>
-                      <span className="font-semibold">{selectedClips.size}</span>
+                  {/* TikTok-style UI Overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {/* Right side action buttons */}
+                    <div className="absolute right-3 bottom-12 flex flex-col items-center gap-4">
+                      {/* Profile */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center mb-1">
+                          <span className="text-white font-bold text-xs">@</span>
+                        </div>
+                        <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center mt-1">
+                          <Plus className="w-3 h-3 text-white" />
+                        </div>
+                      </div>
+
+                      {/* Like */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-xl">❤️</span>
+                        </div>
+                        <span className="text-xs text-white font-medium mt-1">1.2K</span>
+                      </div>
+
+                      {/* Comment */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-xl">💬</span>
+                        </div>
+                        <span className="text-xs text-white font-medium mt-1">89</span>
+                      </div>
+
+                      {/* Share */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-xl">↗️</span>
+                        </div>
+                        <span className="text-xs text-white font-medium mt-1">Share</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Accounts selected:</span>
-                      <span className="font-semibold">{selectedAccounts.size}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Posts per account:</span>
-                      <span className="font-semibold">{selectedClips.size}</span>
+
+                    {/* Bottom content area */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                      {/* Username */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-white font-bold text-sm">@username</span>
+                        <button className="px-3 py-1 bg-white text-black text-xs font-bold rounded-sm">
+                          Follow
+                        </button>
+                      </div>
+
+                      {/* Caption */}
+                      <p className="text-white text-sm mb-2 leading-relaxed">
+                        {captionStrategy === "single"
+                          ? (captionTemplate || "Check this out! 🔥")
+                          : (platformCaptions[selectedCaptionPlatform] || "🔥 You NEED to see this!")}
+                      </p>
+
+                      {/* Hashtags */}
+                      <p className="text-cyan-300 text-sm">
+                        {captionStrategy === "single"
+                          ? (hashtags || "#fyp #viral #trending #foryou")
+                          : (platformHashtags[selectedCaptionPlatform] ||
+                            `#${selectedCaptionPlatform === "tiktok" ? "fyp #viral" : selectedCaptionPlatform === "youtube" ? "subscribe" : "explore"}`)}
+                      </p>
                     </div>
                   </div>
                 </div>
+                {captionStrategy === "platform-specific" && (
+                    <div className="mt-3 flex justify-center gap-2">
+                      {(["tiktok", "youtube", "instagram", "twitter"] as PlatformKey[])
+                        .filter((platform) => platform !== selectedCaptionPlatform)
+                        .map((platform) => (
+                          <button
+                            key={platform}
+                            type="button"
+                            onClick={() => setSelectedCaptionPlatform(platform)}
+                            className="text-xs text-cyan-400 transition hover:text-cyan-300"
+                          >
+                            Preview on {PLATFORM_META[platform].label}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+            )}
+            <div className="rounded-2xl border border-white/20 bg-black/70 p-6 shadow-2xl shadow-black/30 backdrop-blur">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold">Campaign Summary</h2>
+                <div className="mt-2 h-1 rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-cyan-400" />
+              </div>
 
-                <div className="border-t border-zinc-800 pt-4">
-                  <div className="text-sm text-gray-400 mb-2">Schedule</div>
-                  <div className="text-sm">
-                    {scheduleType === 'immediate' ? (
-                      <span className="font-semibold">Posting immediately</span>
+              <div className="space-y-6 text-sm">
+                <SummaryRow label="Campaign name">
+                  {campaignName ? campaignName : <span className="text-zinc-500">Not set</span>}
+                </SummaryRow>
+
+                <SummaryRow label="Campaign Type">
+                  {campaignType === "one-time" ? (
+                    <span className="text-zinc-200">One-Time Drop</span>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-zinc-200">Repetitive ⭐</p>
+                      <p className="text-xs text-zinc-500">Duration: {campaignDuration === "continuous" ? "Ongoing" : `${campaignDuration} days`}</p>
+                      <p className="text-xs text-zinc-500">Posts/day: {actualPostsPerDay}</p>
+                    </div>
+                  )}
+                </SummaryRow>
+
+                <SummaryRow label="Total posts">
+                  {campaignType === "one-time" ? (
+                    totalPosts > 0 ? totalPosts : <span className="text-zinc-500">0 posts</span>
+                  ) : (
+                    <span className="text-zinc-200">{grandTotalPosts === 999 ? "Continuous" : grandTotalPosts}</span>
+                  )}
+                </SummaryRow>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Platform breakdown
+                  </h3>
+                  <div className="mt-3 space-y-2">
+                    {platformBreakdown.length === 0 ? (
+                      <p className="text-xs text-zinc-500">No platforms selected yet.</p>
                     ) : (
-                      <span className="font-semibold">
-                        {startDate && startTime
-                          ? `Starts ${new Date(`${startDate}T${startTime}`).toLocaleString()}`
-                          : 'Not scheduled yet'}
-                      </span>
+                      platformBreakdown.map((item) => (
+                        <div key={item.platform} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className={clsx("h-2 w-2 rounded-full", PLATFORM_META[item.platform].dotClass)} />
+                            <span>{PLATFORM_META[item.platform].label}</span>
+                          </div>
+                          <span className="text-zinc-300">{item.posts} posts</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Clip distribution
+                  </h3>
+                  <div className="mt-2 space-y-1.5 text-sm text-zinc-300">
+                    {clipDistribution.length === 0 ? (
+                      <p className="text-xs text-zinc-500">No clips selected.</p>
+                    ) : (
+                      <>
+                        {clipDistribution.slice(0, showAllDistribution ? undefined : 4).map(({ clip, accountCount }) => (
+                        <div key={clip.id} className="flex items-center justify-between">
+                          <span className="truncate">{clip.title}</span>
+                          <span className="text-xs text-zinc-400">{accountCount} accounts</span>
+                        </div>
+                        ))}
+                        {clipDistribution.length > 4 && !showAllDistribution && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllDistribution(true)}
+                            className="text-xs text-cyan-300 hover:text-cyan-100 transition mt-2"
+                          >
+                            Show {clipDistribution.length - 4} more
+                          </button>
+                        )}
+                        {showAllDistribution && clipDistribution.length > 4 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllDistribution(false)}
+                            className="text-xs text-cyan-300 hover:text-cyan-100 transition mt-2"
+                          >
+                            Show less
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Schedule
+                  </h3>
+                  <p className="mt-2 text-sm text-zinc-200" suppressHydrationWarning>{scheduleLabel}</p>
+                </div>
+
+                {campaignType === "repetitive" && (
+                  <>
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Daily Schedule
+                  </h3>
+                      <div className="mt-2 space-y-1 text-xs text-zinc-300">
+                        <p>• {actualPostsPerDay} posts between 9 AM - 8 PM</p>
+                        <p>• {postingInterval === "30min-1hr" ? "30min - 1 hour" : postingInterval === "1-2hr" ? "1-2 hour" : postingInterval === "2-4hr" ? "2-4 hour" : postingInterval === "4-6hr" ? "4-6 hour" : "Random"} intervals</p>
+                        {timingRandomization && <p>• ±20% randomization</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Auto-Repurpose
+                  </h3>
+                      <div className="mt-2 space-y-1 text-xs text-zinc-300">
+                        <p>✓ {variationMethod === "ai-powered" ? "AI-Powered" : "Manual"}</p>
+                        {variationMethod === "ai-powered" ? (
+                          <>
+                            <p>• Smart variations</p>
+                            <p>• Unique captions</p>
+                            <p>• Music rotation</p>
+                          </>
+                        ) : (
+                          <p>• {variationIntensity === "light" ? "Light" : variationIntensity === "medium" ? "Medium" : "Aggressive"} intensity</p>
+                  )}
+                </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Captions Summary */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Captions
+                  </h3>
+                  <div className="mt-2 space-y-1 text-xs text-zinc-300">
+                    {captionTemplate || (captionStrategy === "platform-specific" && Object.values(platformCaptions).some(c => c)) ? (
+                      <>
+                        <p>✓ Template set</p>
+                        {captionStrategy === "platform-specific" && <p>• Platform-specific</p>}
+                        {aiCaptionVariations && <p>• AI variations: Enabled</p>}
+                        {hashtagRotation && <p>• {hashtagSets.length} hashtag sets</p>}
+                        {ctaRotation && <p>• {selectedCTAs.length} CTAs rotating</p>}
+                      </>
+                    ) : (
+                      <p className="text-zinc-500">Using clip titles</p>
                     )}
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={handleCreateCampaign}
-                disabled={totalPosts === 0}
-                className="w-full px-6 py-3 bg-white text-black rounded-lg font-semibold hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Launch Campaign
-              </button>
+              <div className="mt-8 space-y-3">
+                <button
+                  type="button"
+                  onClick={handleRequestReview}
+                  disabled={launchDisabled}
+                  className={clsx(
+                    "h-12 w-full rounded-xl border px-6 text-sm font-semibold transition",
+                    launchDisabled
+                      ? "cursor-not-allowed border-white/20 bg-black text-zinc-500"
+                      : "border-transparent bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 text-black shadow-[0_12px_40px_rgba(58,199,255,0.4)] hover:translate-y-[-1px]"
+                  )}
+                >
+                  Review &amp; Launch Campaign
+                </button>
+                <button
+                  type="button"
+                  className="h-11 w-full rounded-xl border border-white/20 bg-black/60 text-sm font-semibold text-zinc-300 transition hover:border-white/30"
+                >
+                  Save as Draft
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      {/* Clip Selection Modal */}
+      {clipSelectionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-5xl max-h-[90vh] bg-black border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="sticky top-0 bg-black/95 backdrop-blur-md border-b border-white/20 px-6 py-5 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Select Clips</h2>
+                    <p className="text-sm text-zinc-400 mt-1">{selectedClips.size} selected</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedClips.size === filteredClips.length && filteredClips.length > 0) {
+                        setSelectedClips(new Set());
+                      } else {
+                        setSelectedClips(new Set(filteredClips.map(c => c.id)));
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg border border-cyan-400/40 bg-cyan-500/10 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/15 hover:border-cyan-400/60 transition"
+                  >
+                    {selectedClips.size === filteredClips.length && filteredClips.length > 0 ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <button
+                  onClick={() => setClipSelectionOpen(false)}
+                  className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition"
+                  aria-label="Close"
+                >
+                  <CloseIcon className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    value={clipSearch}
+                    onChange={(event) => setClipSearch(event.target.value)}
+                    placeholder="Search clips..."
+                    className="w-full rounded-lg border border-white/20 bg-black/60 px-9 py-2.5 text-sm text-white outline-none transition focus:border-cyan-400"
+                  />
+                </div>
+                <div className="relative">
+                  <select
+                    value={clipSort}
+                    onChange={(event) => setClipSort(event.target.value as ClipSortOption)}
+                    className="w-40 appearance-none rounded-lg border border-white/20 bg-black/60 px-3 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                  >
+                    {CLIP_SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                </div>
+              </div>
+
+              {clipsLoading ? (
+                <div className="flex h-48 flex-col items-center justify-center gap-3 text-center">
+                  <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
+                  <p className="text-sm text-zinc-400">Loading clips...</p>
+                </div>
+              ) : filteredClips.length === 0 ? (
+                <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/20 bg-black/60/40 text-center">
+                  <AlertTriangle className="h-8 w-8 text-zinc-500" />
+                  <p className="text-sm text-zinc-400">No clips found.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {displayedClips.map((clip, index) => {
+                    const isSelected = selectedClips.has(clip.id);
+                    const fullTitle = clip.title || `Clip ${clip.id.slice(0, 6)}`;
+                    const friendlyTitle = fullTitle.length > 20 ? fullTitle.slice(0, 20) + '...' : fullTitle;
+                    
+                    return (
+                      <article
+                        key={clip.id}
+                        onClick={() => toggleClip(clip.id)}
+                        className={clsx(
+                          "group relative overflow-hidden rounded-3xl border bg-white/[0.04] text-white transition-all duration-300 backdrop-blur flex flex-col cursor-pointer",
+                          isSelected
+                            ? "border-cyan-400/60 shadow-[0_35px_90px_-45px_rgba(56,189,248,0.6)] ring-2 ring-cyan-400/40"
+                            : "border-white/20 shadow-[0_30px_80px_-55px_rgba(0,0,0,0.85)] hover:-translate-y-2 hover:border-cyan-400/40 hover:shadow-[0_40px_110px_-60px_rgba(56,189,248,0.55)]"
+                        )}
+                        style={{
+                          animation: `fadeSlideUp 0.45s ease-out ${index * 0.05}s both`,
+                        }}
+                      >
+                        <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/[0.05] via-transparent to-transparent opacity-90" />
+                        
+                        <div className="relative w-full overflow-hidden" style={{ aspectRatio: '9/16' }}>
+                          {clip.thumbnail ? (
+                            <>
+                              <img
+                                src={clip.thumbnail}
+                                alt={friendlyTitle}
+                                className="h-full w-full object-cover"
+                              />
+                            </>
+                          ) : clip.clipUrl ? (
+                            <video
+                              src={clip.clipUrl}
+                              preload="metadata"
+                              muted
+                              playsInline
+                              className="h-full w-full object-cover"
+                              onLoadedMetadata={(e) => {
+                                const video = e.currentTarget;
+                                video.currentTime = Math.min(1, video.duration * 0.1);
+                              }}
+                              onError={(e) => {
+                                console.error('Video load error for clip:', clip.id);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black">
+                              <Play className="h-12 w-12 text-white/30" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                          
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleClip(clip.id);
+                            }}
+                            className={clsx(
+                              "absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white transition-all duration-200 backdrop-blur",
+                              isSelected
+                                ? "border-cyan-400/80 bg-cyan-500/20 text-cyan-200"
+                                : "hover:border-cyan-400/60 hover:text-cyan-200"
+                            )}
+                          >
+                            {isSelected ? (
+                              <CheckCircle2 className="h-5 w-5" />
+                            ) : (
+                              <Circle className="h-4 w-4" />
+                            )}
+                          </button>
+
+                          {clip.duration > 0 && (
+                            <div className="absolute bottom-4 left-4 z-20">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(clip.duration)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="relative z-10 flex flex-col gap-3 p-4">
+                          <h3 className="text-sm font-semibold text-white" title={fullTitle}>
+                            {friendlyTitle}
+                          </h3>
+                          <p className="text-xs text-zinc-400">
+                            {new Date(clip.createdAt).toLocaleString(undefined, {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </p>
+                        </div>
+
+                        <div className="relative z-10 border-t border-white/5 bg-black/20 px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedClipForStats(clip);
+                              setClipStatsOpen(true);
+                            }}
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-3 py-2 text-sm font-semibold text-white transition duration-200 hover:border-cyan-300/50 hover:text-cyan-100"
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                            <span>View Stats</span>
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-black/95 backdrop-blur-md border-t border-white/20 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-zinc-400">{selectedClips.size} clip{selectedClips.size !== 1 ? 's' : ''} selected</p>
+                <button
+                  onClick={() => setClipSelectionOpen(false)}
+                  className="px-5 py-2.5 bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 text-black font-semibold rounded-xl hover:opacity-90 transition"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Clip Stats Modal */}
+      {clipStatsOpen && selectedClipForStats && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md bg-black border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-black/95 backdrop-blur-md border-b border-white/20 px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Video className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                    <h2 className="text-lg font-bold text-white truncate">
+                      {selectedClipForStats.title}
+                    </h2>
+                  </div>
+                  <p className="text-sm text-zinc-400">Clip Information</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setClipStatsOpen(false);
+                    setSelectedClipForStats(null);
+                  }}
+                  className="flex-shrink-0 p-2 hover:bg-zinc-800 rounded-lg transition"
+                  aria-label="Close"
+                >
+                  <CloseIcon className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-sm">
+                  <Clock className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-zinc-400">Duration:</span>
+                  <span className="text-white font-medium ml-auto">
+                    {selectedClipForStats.duration && selectedClipForStats.duration > 0
+                      ? formatDuration(selectedClipForStats.duration) 
+                      : 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Video className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-zinc-400">File size:</span>
+                  <span className="text-white font-medium ml-auto">
+                    {selectedClipForStats.fileSize && selectedClipForStats.fileSize > 0
+                      ? `${(selectedClipForStats.fileSize / (1024 * 1024)).toFixed(1)} MB`
+                      : 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Video className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-zinc-400">Format:</span>
+                  <span className="text-white font-medium ml-auto">
+                    MP4 (Vertical)
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-zinc-400">Date of upload:</span>
+                  <span className="text-white font-medium ml-auto" suppressHydrationWarning>
+                    {new Date(selectedClipForStats.createdAt).toLocaleString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/20 bg-zinc-950/95 shadow-2xl">
+            <header className="flex items-center justify-between border-b border-white/20 px-6 py-4">
+              <h3 className="text-lg font-semibold">Review Campaign</h3>
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="rounded-full p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="max-h-[70vh] space-y-6 overflow-y-auto px-6 py-6">
+              <ReviewRow label="Campaign name" value={campaignName} />
+              <ReviewRow
+                label="Content"
+                value={`${selectedClipItems.length} clip${selectedClipItems.length === 1 ? "" : "s"} selected`}
+              >
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {selectedClipItems.map((clip) => (
+                    <div
+                      key={clip.id}
+                      className="rounded-lg border border-white/20 bg-black/60 p-3 text-xs text-zinc-300"
+                    >
+                      <p className="truncate font-semibold text-white">{clip.title}</p>
+                      <p className="text-[11px] text-zinc-500">Duration · {formatDuration(clip.duration)}</p>
+                    </div>
+                  ))}
+                </div>
+              </ReviewRow>
+
+              <ReviewRow label="Platforms">
+                {activeAccounts.length === 0 ? (
+                  <p className="text-xs text-red-400">No accounts selected</p>
+                ) : (
+                  <ul className="space-y-2 text-sm text-zinc-300">
+                    {platformBreakdown.map((item) => (
+                      <li key={item.platform}>
+                        {PLATFORM_META[item.platform].label}: {activeAccounts
+                          .filter((account) => account.platform === item.platform)
+                          .map((account) => account.accountName)
+                          .join(", ") || "All accounts"}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </ReviewRow>
+
+              <ReviewRow label="Schedule">
+                <div className="space-y-1 text-sm text-zinc-300">
+                  <p>Start: {scheduleType === "now" ? "Immediately" : (formatDateTime(startDate, startTime) || "Not set")}</p>
+                  {campaignType === "one-time" && <p>Frequency: {getFrequencyLabel(frequency)}</p>}
+                  <p>Total posts: {campaignType === "repetitive" ? grandTotalPosts : totalPosts}</p>
+                  {campaignType === "repetitive" && (
+                    <p className="text-xs text-zinc-500">
+                      {actualPostsPerDay} posts/day × {campaignDuration === "continuous" ? "∞" : `${campaignDuration} days`}
+                    </p>
+                  )}
+                </div>
+              </ReviewRow>
+
+              <ReviewRow label="Settings">
+                <ul className="space-y-1 text-sm text-zinc-300">
+                  <li>Campaign Type: {campaignType === "one-time" ? "One-Time Drop" : "Repetitive"}</li>
+                  {campaignType === "repetitive" && (
+                    <>
+                      <li>✓ Auto-repurpose ({variationMethod === "ai-powered" ? "AI-Powered" : "Manual"})</li>
+                      <li>Duration: {campaignDuration === "continuous" ? "Ongoing" : `${campaignDuration} days`}</li>
+                      <li>Posts/day: {actualPostsPerDay}</li>
+                    </>
+                  )}
+                </ul>
+              </ReviewRow>
+
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+                ⚠️ This will schedule {campaignType === "repetitive" ? grandTotalPosts : totalPosts} post{(campaignType === "repetitive" ? grandTotalPosts : totalPosts) !== 1 ? 's' : ''} across {selectedAccountCount} account{selectedAccountCount !== 1 ? 's' : ''}. You cannot undo this action.
+              </div>
+            </div>
+            <footer className="flex items-center justify-between gap-3 border-t border-white/20 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="h-11 rounded-xl border border-white/25 px-5 text-sm font-semibold text-zinc-300 transition hover:border-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLaunch}
+                disabled={launching}
+                className={clsx(
+                  "flex h-11 items-center justify-center rounded-xl px-6 text-sm font-semibold transition",
+                  launching
+                    ? "cursor-not-allowed border-white/20 bg-black text-zinc-500"
+                    : "border-transparent bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 text-black shadow-[0_10px_35px_rgba(59,200,255,0.35)] hover:translate-y-[-1px]"
+                )}
+              >
+                {launching ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Launching…
+                  </>
+                ) : (
+                  "Confirm & Launch Campaign"
+                )}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">{label}</p>
+      <div className="text-sm text-zinc-200">{children}</div>
+    </div>
+  );
+}
+
+function PerformanceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-zinc-400">{label}</span>
+      <span className="font-medium text-white">{value}</span>
+    </div>
+  );
+}
+
+function ReviewRow({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-white/20 bg-black/70 p-4">
+      <div className="flex items-center justify-between text-sm text-zinc-300">
+        <p className="font-semibold text-white">{label}</p>
+        {value && <p className="text-zinc-400">{value}</p>}
       </div>
+      {children}
     </div>
   );
 }

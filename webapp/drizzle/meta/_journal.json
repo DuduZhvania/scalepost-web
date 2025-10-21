@@ -8,6 +8,13 @@
       "when": 1760457365681,
       "tag": "0000_hot_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1760625375817,
+      "tag": "0001_add_media_asset_type",
+      "breakpoints": false
     }
   ]
 }

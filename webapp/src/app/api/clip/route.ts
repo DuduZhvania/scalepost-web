@@ -2,11 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { media_assets, clips } from '@/db/schema/media';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   try {
-    const { mediaAssetId } = await req.json();
+    const { mediaAssetId, addFullVideo } = await req.json();
 
     if (!mediaAssetId) {
       return NextResponse.json(
@@ -27,6 +27,54 @@ export async function POST(req: NextRequest) {
         { error: 'Media asset not found' },
         { status: 404 }
       );
+    }
+
+    // If addFullVideo is true, add the entire video as a single clip
+    if (addFullVideo) {
+      // Use actual asset duration from database
+      const duration = asset.duration;
+      const thumbnail = asset.thumbnail;
+
+      console.log('Creating clip from asset:', {
+        assetId: asset.id,
+        fileName: asset.fileName,
+        duration: duration || 'unknown',
+        thumbnail: thumbnail || 'none'
+      });
+
+      // If no duration, warn but allow creation
+      // The UI will show "—" for duration which is acceptable
+      if (!duration || duration === 0) {
+        console.warn('⚠️ Creating clip without duration for asset:', asset.id, '- Consider re-uploading video');
+      }
+
+      const [clip] = await db
+        .insert(clips)
+        .values({
+          mediaAssetId,
+          userId: asset.userId,
+          title: asset.fileName,
+          description: `Full video: ${asset.fileName}`,
+          clipUrl: asset.fileUrl,
+          thumbnail: thumbnail || null,
+          startTime: 0,
+          endTime: duration || 0,
+          duration: duration || 0,
+          score: 75, // Default score for manually added clips
+          status: 'ready',
+          metadata: JSON.stringify({
+            isFullVideo: true,
+            addedManually: true,
+            hasMetadata: !!(duration && thumbnail),
+          }),
+        })
+        .returning();
+
+      return NextResponse.json({
+        success: true,
+        message: 'Video added to clips',
+        clips: [clip],
+      });
     }
 
     if (!asset.duration) {
@@ -129,11 +177,40 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Get clips for a media asset
+// Get clips for a media asset (or all clips if requested)
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const mediaAssetId = searchParams.get('mediaAssetId');
+    const allClips = searchParams.get('all');
+
+    if (allClips === '1') {
+      const recentClips = await db
+        .select({
+          id: clips.id,
+          mediaAssetId: clips.mediaAssetId,
+          title: clips.title,
+          clipUrl: clips.clipUrl,
+          duration: clips.duration,
+          thumbnail: clips.thumbnail,
+          status: clips.status,
+          createdAt: clips.createdAt,
+          score: clips.score,
+          assetFileName: media_assets.fileName,
+          assetFileUrl: media_assets.fileUrl,
+          assetFileSize: media_assets.fileSize,
+          assetStatus: media_assets.status,
+          assetType: media_assets.type,
+        })
+        .from(clips)
+        .leftJoin(media_assets, eq(clips.mediaAssetId, media_assets.id))
+        .orderBy(desc(clips.createdAt));
+
+      return NextResponse.json({
+        success: true,
+        clips: recentClips,
+      });
+    }
 
     if (!mediaAssetId) {
       return NextResponse.json(
@@ -157,6 +234,116 @@ export async function GET(req: NextRequest) {
     console.error('Error fetching clips:', error);
     return NextResponse.json(
       { error: 'Failed to fetch clips' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => null);
+    const id = typeof body?.id === 'string' ? body.id.trim() : '';
+    const title = typeof body?.title === 'string' ? body.title.trim() : '';
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Clip ID is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (!title) {
+      return NextResponse.json(
+        { error: 'A non-empty title is required.' },
+        { status: 400 }
+      );
+    }
+
+    const [updated] = await db
+      .update(clips)
+      .set({ title, updatedAt: new Date() })
+      .where(eq(clips.id, id))
+      .returning({
+        id: clips.id,
+        title: clips.title,
+        mediaAssetId: clips.mediaAssetId,
+        clipUrl: clips.clipUrl,
+        duration: clips.duration,
+        thumbnail: clips.thumbnail,
+        status: clips.status,
+        createdAt: clips.createdAt,
+        score: clips.score,
+        updatedAt: clips.updatedAt,
+      });
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Clip not found.' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      clip: {
+        id: updated.id,
+        title: updated.title,
+        mediaAssetId: updated.mediaAssetId,
+        clipUrl: updated.clipUrl,
+        duration: updated.duration,
+        thumbnail: updated.thumbnail,
+        status: updated.status,
+        createdAt:
+          updated.createdAt instanceof Date
+            ? updated.createdAt.toISOString()
+            : typeof updated.createdAt === 'string'
+              ? updated.createdAt
+              : new Date().toISOString(),
+        score: updated.score,
+        updatedAt:
+          updated.updatedAt instanceof Date
+            ? updated.updatedAt.toISOString()
+            : undefined,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to rename clip:', error);
+    return NextResponse.json(
+      { error: 'Failed to rename clip.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const clipId = searchParams.get('id');
+
+    if (!clipId) {
+      return NextResponse.json(
+        { error: 'clip id is required' },
+        { status: 400 }
+      );
+    }
+
+    const deleted = await db
+      .delete(clips)
+      .where(eq(clips.id, clipId))
+      .returning({ id: clips.id });
+
+    if (!deleted.length) {
+      return NextResponse.json(
+        { error: 'Clip not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting clip:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete clip' },
       { status: 500 }
     );
   }
