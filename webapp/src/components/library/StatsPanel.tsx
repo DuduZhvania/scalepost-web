@@ -258,14 +258,14 @@ export function StatsPanel({
                   Clip Tracking Coming Soon
                 </h3>
                 <p className="text-sm text-zinc-400 max-w-sm">
-                  We're building powerful analytics to track your clip performance across all platforms. Stay tuned!
+                  We&apos;re building powerful analytics to track your clip performance across all platforms. Stay tuned!
                 </p>
               </div>
 
               {/* Placeholder Info */}
               <div className="border-t border-zinc-800 pt-6">
                 <h4 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">
-                  What's Coming
+                  What&apos;s Coming
                 </h4>
                 <div className="space-y-2 text-sm text-zinc-400">
                   <div className="flex items-start gap-2">

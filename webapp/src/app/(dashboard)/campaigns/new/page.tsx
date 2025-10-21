@@ -10,16 +10,13 @@ import {
   Calendar,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   Circle,
   Clock,
-  Filter,
   Info,
   Loader2,
   Play,
   Plus,
   Search,
-  Sparkles,
   TrendingUp,
   UserPlus,
   Video,
@@ -65,10 +62,6 @@ interface Account {
   followers: number;
 }
 
-interface TimelineEntry {
-  label: string;
-  datetime: string;
-}
 
 const FREQUENCY_OPTIONS: Array<{ label: string; value: FrequencyOption; description?: string }> = [
   { label: "Post All at Once", value: "all-once", description: "Instant drop" },
@@ -492,7 +485,7 @@ export default function CampaignBuilder() {
         const clipsArray = Array.isArray(data) ? data : (data.clips || []);
         
         // Transform API clips to match our Clip interface
-        const transformedClips: Clip[] = clipsArray.map((clip: any) => ({
+        const transformedClips: Clip[] = clipsArray.map((clip: Record<string, unknown>) => ({
           id: clip.id,
           title: clip.title || clip.assetFileName || `Clip ${clip.id}`,
           platform: 'tiktok' as PlatformKey, // Default platform
@@ -786,23 +779,23 @@ export default function CampaignBuilder() {
             {/* Campaign Name Input */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-zinc-200">Campaign Name *</label>
-              <input
-                value={campaignName}
-                onChange={(event) => setCampaignName(event.target.value)}
-                placeholder="e.g., Weekly Content Drop"
-                className={clsx(
-                  "w-full rounded-lg border px-4 py-3 text-sm transition focus:border-cyan-400 focus:outline-none",
-                  "bg-black/60",
-                  campaignNameError ? "border-red-500/60" : "border-white/20"
-                )}
-              />
-              {campaignNameError && (
-                <p className="mt-2 flex items-center gap-2 text-xs text-red-400">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  Campaign name is required.
-                </p>
-              )}
-            </div>
+                  <input
+                    value={campaignName}
+                    onChange={(event) => setCampaignName(event.target.value)}
+                    placeholder="e.g., Weekly Content Drop"
+                    className={clsx(
+                      "w-full rounded-lg border px-4 py-3 text-sm transition focus:border-cyan-400 focus:outline-none",
+                      "bg-black/60",
+                      campaignNameError ? "border-red-500/60" : "border-white/20"
+                    )}
+                  />
+                  {campaignNameError && (
+                    <p className="mt-2 flex items-center gap-2 text-xs text-red-400">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      Campaign name is required.
+                    </p>
+                  )}
+                </div>
 
             {/* Section 1: Select Content */}
             <section id="section-1" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
@@ -1221,7 +1214,7 @@ export default function CampaignBuilder() {
                               <label className="text-xs font-medium text-zinc-300 block mb-2">Variation Style:</label>
                               <select
                                 value={variationStyle}
-                                onChange={(e) => setVariationStyle(e.target.value as any)}
+                                onChange={(e) => setVariationStyle(e.target.value as "similar" | "hooks" | "rewrite" | "template-ai")}
                                 className="w-full appearance-none rounded-lg border border-white/20 bg-black/60 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                               >
                                 <option value="similar">Similar Meaning (keeps your message, changes wording)</option>
@@ -1437,8 +1430,8 @@ export default function CampaignBuilder() {
                       <option value="one-time">One-Time Drop - Post clips once and finish</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                  </div>
-                </div>
+                        </div>
+                      </div>
 
                 {/* Posting Schedule - Simplified */}
                 <div className="border-t border-white/10 pt-6">
@@ -1467,13 +1460,13 @@ export default function CampaignBuilder() {
                         />
                         <span className="text-xs text-zinc-400">
                           {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local'}
-                        </span>
+                      </span>
                       </div>
                     </div>
                   </div>
 
                   {/* End Date & Time - Full Width */}
-                  <div>
+                    <div>
                     <label className="text-xs font-medium text-zinc-400 block mb-2">End date</label>
                     <div className="flex items-center gap-3 w-full">
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
@@ -1483,8 +1476,8 @@ export default function CampaignBuilder() {
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
                           className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
-                        />
-                      </div>
+                          />
+                    </div>
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
                         <Clock className="h-4 w-4 text-zinc-400" />
                         <input
@@ -1496,8 +1489,8 @@ export default function CampaignBuilder() {
                         <span className="text-xs text-zinc-400">
                           {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Local'}
                         </span>
+                        </div>
                       </div>
-                    </div>
                   </div>
                 </div>
 
@@ -1506,7 +1499,7 @@ export default function CampaignBuilder() {
                   <div className="space-y-6 border-t border-white/10 pt-6">
 
                     {/* Daily Reposts - Dropdown with Presets */}
-                  <div>
+                    <div>
                       <label className="text-sm font-medium text-zinc-200 block mb-3">
                         Daily Reposts <span className="text-zinc-500 font-normal">(Per account)</span>
                       </label>
@@ -1516,7 +1509,7 @@ export default function CampaignBuilder() {
                                  customPostsPerDay <= 10 ? "5-10" :
                                  customPostsPerDay <= 15 ? "10-15" :
                                  customPostsPerDay <= 20 ? "15-20" : "custom"}
-                          onChange={(e) => {
+                            onChange={(e) => {
                             const value = e.target.value;
                             if (value === "1-4") setCustomPostsPerDay(2);
                             else if (value === "5-10") setCustomPostsPerDay(7);
@@ -1531,8 +1524,8 @@ export default function CampaignBuilder() {
                           <option value="15-20">15-20 posts/day (Risky of getting flagged)</option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                      </div>
-                      
+                  </div>
+
                       {/* Fine-tune control */}
                       <div className="mt-4 flex items-center gap-4">
                         <button
@@ -1605,10 +1598,10 @@ export default function CampaignBuilder() {
                               </div>
                               <p className="text-xs text-zinc-400 mt-1">Add ±10-20% time variance to mimic human posting patterns</p>
                             </div>
-                            <button
-                              type="button"
+                        <button
+                          type="button"
                               onClick={() => setTimingRandomization(!timingRandomization)}
-                              className={clsx(
+                      className={clsx(
                                 "relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-black ml-4",
                                 timingRandomization ? "bg-cyan-500" : "bg-zinc-700"
                               )}
@@ -1619,8 +1612,8 @@ export default function CampaignBuilder() {
                                   timingRandomization ? "translate-x-5" : "translate-x-0"
                                 )}
                               />
-                            </button>
-                          </div>
+                        </button>
+                      </div>
                         </div>
                       )}
 
@@ -1747,7 +1740,7 @@ export default function CampaignBuilder() {
                             <Circle className="h-2 w-2 flex-shrink-0 text-cyan-400 mt-1.5" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white">
-                                Post {post.index} · Clip: "{post.clipTitle.length > 20 ? post.clipTitle.slice(0, 20) + '...' : post.clipTitle}"
+                                Post {post.index} · Clip: &quot;{post.clipTitle.length > 20 ? post.clipTitle.slice(0, 20) + '...' : post.clipTitle}&quot;
                               </p>
                               <p className="text-xs text-zinc-400 mt-0.5">
                                 → {post.platform} {post.accountName}

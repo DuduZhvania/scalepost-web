@@ -153,7 +153,7 @@ export default function DashboardPage() {
                 value={formatValue(kpis.activeCampaigns)}
                 timeframe={selectedTimeframeLabel}
                 delta={deltaActiveCampaigns.value}
-                deltaTrend={deltaActiveCampaigns.trend}
+                deltaTrend={deltaActiveCampaigns.trend as 'up' | 'down' | 'neutral'}
                 icon={<span aria-hidden>📊</span>}
                 tooltip="Currently running campaigns"
               />
@@ -162,7 +162,7 @@ export default function DashboardPage() {
                 value={formatValue(kpis.postsPublished)}
                 timeframe={selectedTimeframeLabel}
                 delta={deltaPostsPublished.value}
-                deltaTrend={deltaPostsPublished.trend}
+                deltaTrend={deltaPostsPublished.trend as 'up' | 'down' | 'neutral'}
                 icon={<span aria-hidden>🎬</span>}
                 tooltip="Posts published this month"
               />
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 value={formatValue(kpis.totalViews)}
                 timeframe={selectedTimeframeLabel}
                 delta={deltaTotalViews.value}
-                deltaTrend={deltaTotalViews.trend}
+                deltaTrend={deltaTotalViews.trend as 'up' | 'down' | 'neutral'}
                 icon={<span aria-hidden>👁️</span>}
                 tooltip="Total views this month"
               />

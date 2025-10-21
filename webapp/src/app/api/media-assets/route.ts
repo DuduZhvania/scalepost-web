@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const normalizedType =
       typeParam === "file" || typeParam === "link" ? typeParam : undefined;
 
-    let query = db
+    const baseQuery = db
       .select({
         id: media_assets.id,
         url: media_assets.fileUrl,
@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
       .from(media_assets)
       .leftJoin(clips, eq(clips.mediaAssetId, media_assets.id));
 
-    if (normalizedType) {
-      query = query.where(eq(media_assets.type, normalizedType));
-    }
+    const query = normalizedType 
+      ? baseQuery.where(eq(media_assets.type, normalizedType))
+      : baseQuery;
 
     const assets = await query
       .groupBy(

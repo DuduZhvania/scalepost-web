@@ -483,7 +483,7 @@ export default function LibraryPage() {
   const [statsPanel, setStatsPanel] = useState<{
     isOpen: boolean;
     type: 'video' | 'clip';
-    data: any;
+    data: Record<string, unknown> | null;
   }>({
     isOpen: false,
     type: 'video',
@@ -2892,8 +2892,8 @@ export default function LibraryPage() {
         isOpen={statsPanel.isOpen}
         onClose={closeStatsPanel}
         type={statsPanel.type}
-        videoStats={statsPanel.type === 'video' ? statsPanel.data : undefined}
-        clipStats={statsPanel.type === 'clip' ? statsPanel.data : undefined}
+        videoStats={statsPanel.type === 'video' ? statsPanel.data as any : undefined}
+        clipStats={statsPanel.type === 'clip' ? statsPanel.data as any : undefined}
         onGenerateClips={() => {
           closeStatsPanel();
           window.location.href = '/studio';
