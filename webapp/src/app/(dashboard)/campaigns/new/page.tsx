@@ -2,7 +2,6 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -24,288 +23,48 @@ import {
   X as CloseIcon,
 } from "lucide-react";
 
-type FrequencyOption =
-  | "all-once"
-  | "hourly"
-  | "two-hours"
-  | "six-hours"
-  | "daily"
-  | "custom";
+// Import types
+import type {
+  FrequencyOption,
+  CampaignType,
+  CampaignDuration,
+  PostsPerDay,
+  PostingInterval,
+  VariationMethod,
+  VariationIntensity,
+  ClipSortOption,
+  PlatformKey,
+  Clip,
+  Account,
+  ToastState,
+} from "@/components/campaigns/types";
 
-type CampaignType = "one-time" | "repetitive";
-type CampaignDuration = "3" | "7" | "14" | "30" | "60" | "90" | "continuous";
-type PostsPerDay = "1-3" | "5-10" | "10-15" | "15-20" | "custom";
-type PostingInterval = "30min-1hr" | "1-2hr" | "2-4hr" | "4-6hr" | "random";
-type VariationMethod = "ai-powered" | "manual";
-type VariationIntensity = "light" | "medium" | "aggressive";
+// Import constants
+import {
+  CLIP_SORT_OPTIONS,
+  PLATFORM_META,
+  CTA_OPTIONS,
+  TOTAL_SECTIONS,
+  mockAccounts,
+  defaultDate,
+  defaultEndDate,
+  defaultTime,
+  QUICK_TEMPLATES,
+  PLATFORM_BEST_PRACTICES,
+  AI_VARIATION_EXAMPLES,
+} from "@/components/campaigns/constants";
 
-type ClipSortOption = "recent" | "oldest" | "duration";
+// Import utilities
+import {
+  formatDuration,
+  formatCompactNumber,
+  formatDateTime,
+  getFrequencyLabel,
+  buildTimelinePreview,
+} from "@/components/campaigns/utils";
 
-type PlatformKey = "tiktok" | "youtube" | "instagram" | "twitter";
-
-interface Clip {
-  id: string;
-  title: string;
-  duration: number;
-  score: number;
-  createdAt: string;
-  platform: PlatformKey;
-  thumbnail?: string | null;
-  clipUrl?: string | null;
-  fileSize?: number | null;
-}
-
-interface Account {
-  id: string;
-  platform: PlatformKey;
-  accountName: string;
-  followers: number;
-}
-
-
-const FREQUENCY_OPTIONS: Array<{ label: string; value: FrequencyOption; description?: string }> = [
-  { label: "Post All at Once", value: "all-once", description: "Instant drop" },
-  { label: "Hourly Distribution", value: "hourly", description: "1 post/hour" },
-  { label: "Every 2 Hours", value: "two-hours", description: "1 post/2 hours" },
-  { label: "Every 6 Hours", value: "six-hours", description: "1 post/6 hours" },
-  { label: "Daily Distribution", value: "daily", description: "1 post/day, same time" },
-  { label: "Custom Interval", value: "custom", description: "Set your own pace" },
-];
-
-const CLIP_SORT_OPTIONS: Array<{ label: string; value: ClipSortOption }> = [
-  { label: "Recent", value: "recent" },
-  { label: "Oldest", value: "oldest" },
-  { label: "Duration", value: "duration" },
-];
-
-
-const PLATFORM_META: Record<PlatformKey, { label: string; dotClass: string; pillBg: string; charLimit: number; accentColor: string }> = {
-  tiktok: {
-    label: "TikTok",
-    dotClass: "bg-gradient-to-r from-pink-500 to-cyan-400",
-    pillBg: "bg-pink-500/20 border-pink-500/40",
-    charLimit: 2200,
-    accentColor: "pink",
-  },
-  youtube: {
-    label: "YouTube",
-    dotClass: "bg-red-500",
-    pillBg: "bg-red-500/20 border-red-500/40",
-    charLimit: 5000,
-    accentColor: "red",
-  },
-  instagram: {
-    label: "Instagram",
-    dotClass: "bg-gradient-to-r from-pink-500 via-purple-500 to-yellow-400",
-    pillBg: "bg-purple-500/20 border-purple-500/40",
-    charLimit: 2200,
-    accentColor: "purple",
-  },
-  twitter: {
-    label: "Twitter/X",
-    dotClass: "bg-sky-400",
-    pillBg: "bg-sky-400/20 border-sky-400/40",
-    charLimit: 280,
-    accentColor: "sky",
-  },
-};
-
-const PLATFORM_SHORT_LABEL: Record<PlatformKey, string> = {
-  tiktok: "TT",
-  youtube: "YT",
-  instagram: "IG",
-  twitter: "X",
-};
-
-const QUICK_TEMPLATES = [
-  { label: "Hook + Value", content: "🚨 This changed everything for me! Here's what I learned...\n\n{clip_title}" },
-  { label: "Story", content: "Let me tell you about the time I discovered this...\n\n{clip_title}" },
-  { label: "Question", content: "Have you ever wondered why...? Here's the answer 👇\n\n{clip_title}" },
-  { label: "Direct", content: "Check this out! 🔥\n\n{clip_title}" },
-];
-
-const PLATFORM_BEST_PRACTICES: Record<PlatformKey, string[]> = {
-  tiktok: ["Start with hook/emoji", "3-5 hashtags max", "Keep it punchy & short", "Use trending sounds/hashtags"],
-  youtube: ["SEO-optimized titles", "Detailed descriptions", "Include timestamps", "Add links in description"],
-  instagram: ["Engaging first line", "Use line breaks", "Max 30 hashtags", "Include call-to-action"],
-  twitter: ["Keep it under 280 chars", "Use 1-2 hashtags max", "Tag relevant accounts", "Thread for longer content"],
-};
-
-const AI_VARIATION_EXAMPLES = {
-  original: "Check this out! 🔥",
-  variants: [
-    "You won't believe this! 🤯",
-    "This is insane 💯",
-    "Must watch! 🎯",
-    "Wait for it... 😱",
-  ],
-};
-
-const CTA_OPTIONS = [
-  "Follow for more",
-  "Like if you agree",
-  "Comment your thoughts",
-  "Share with friends",
-  "Save for later",
-  "Turn on notifications",
-];
-
-const TOTAL_SECTIONS = 4;
-
-const mockAccounts: Account[] = [
-  {
-    id: "acct-1",
-    platform: "tiktok",
-    accountName: "@scaleposthq",
-    followers: 10500,
-  },
-  {
-    id: "acct-2",
-    platform: "tiktok",
-    accountName: "@scalepost.creator",
-    followers: 5200,
-  },
-  {
-    id: "acct-3",
-    platform: "youtube",
-    accountName: "Scalepost Studio",
-    followers: 18700,
-  },
-  {
-    id: "acct-4",
-    platform: "instagram",
-    accountName: "@scalepost",
-    followers: 8900,
-  },
-  {
-    id: "acct-5",
-    platform: "instagram",
-    accountName: "@scalepost.team",
-    followers: 4300,
-  },
-  {
-    id: "acct-6",
-    platform: "twitter",
-    accountName: "@scalepost",
-    followers: 6700,
-  },
-];
-
-const today = new Date();
-const defaultDate = today.toISOString().slice(0, 10);
-const sevenDaysLater = new Date(today);
-sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-const defaultEndDate = sevenDaysLater.toISOString().slice(0, 10);
-const defaultTime = `${today.getHours().toString().padStart(2, "0")}:${today
-  .getMinutes()
-  .toString()
-  .padStart(2, "0")}`;
-
-function formatDuration(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("en", { notation: "compact" }).format(value);
-}
-
-function formatDateTime(date: string, time: string) {
-  if (!date || !time) return "";
-  const iso = `${date}T${time}`;
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function getFrequencyLabel(value: FrequencyOption) {
-  return FREQUENCY_OPTIONS.find((option) => option.value === value)?.label ?? "Post All Once";
-}
-
-interface TimelinePost {
-  clipTitle: string;
-  accountName: string;
-  platform: string;
-  datetime: string;
-  index: number;
-}
-
-function buildTimelinePreview(
-  frequency: FrequencyOption,
-  date: string,
-  time: string,
-  clips: Clip[],
-  accounts: Account[],
-  customInterval: number,
-  customIntervalUnit: "minutes" | "hours" | "days"
-): TimelinePost[] {
-  if (clips.length === 0 || accounts.length === 0) {
-    return [];
-  }
-
-  const base = date && time 
-    ? new Date(`${date}T${time}`)
-    : new Date();
-    
-  if (Number.isNaN(base.getTime())) {
-    return [];
-  }
-
-  let intervalMs = 0;
-  
-  if (frequency === "hourly") {
-    intervalMs = 60 * 60 * 1000;
-  } else if (frequency === "two-hours") {
-    intervalMs = 2 * 60 * 60 * 1000;
-  } else if (frequency === "six-hours") {
-    intervalMs = 6 * 60 * 60 * 1000;
-  } else if (frequency === "daily") {
-    intervalMs = 24 * 60 * 60 * 1000;
-  } else if (frequency === "custom") {
-    const multiplier = customIntervalUnit === "minutes" ? 60 * 1000 
-      : customIntervalUnit === "hours" ? 60 * 60 * 1000 
-      : 24 * 60 * 60 * 1000;
-    intervalMs = customInterval * multiplier;
-  }
-
-  const results: TimelinePost[] = [];
-  let postIndex = 0;
-
-  for (const clip of clips) {
-    for (const account of accounts) {
-      const postDate = frequency === "all-once" 
-        ? base 
-        : new Date(base.getTime() + postIndex * intervalMs);
-      
-      results.push({
-        clipTitle: clip.title,
-        accountName: account.accountName,
-        platform: PLATFORM_META[account.platform]?.label || account.platform,
-        datetime: postDate.toLocaleString(undefined, {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        index: postIndex + 1,
-      });
-      
-      postIndex++;
-    }
-  }
-  
-  return results;
-}
-
-interface ToastState {
-  message: string;
-  tone: "success" | "error";
-}
+// Import UI components
+import { SummaryRow, ReviewRow } from "@/components/campaigns/CampaignUIComponents";
 
 export default function CampaignBuilder() {
   const [campaignName, setCampaignName] = useState("");
@@ -709,11 +468,11 @@ export default function CampaignBuilder() {
     try {
       // TODO: replace with real API call
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      setToast({ message: `Campaign launched! ${campaignType === "repetitive" ? grandTotalPosts : totalPosts} posts scheduled.`, tone: "success" });
+      setToast({ message: `Campaign launched! ${campaignType === "repetitive" ? grandTotalPosts : totalPosts} posts scheduled.`, type: "success" });
       setReviewOpen(false);
       // TODO: replace with router push to campaign detail
     } catch (error) {
-      setToast({ message: "Something went wrong launching the campaign.", tone: "error" });
+      setToast({ message: "Something went wrong launching the campaign.", type: "error" });
     } finally {
       setLaunching(false);
     }
@@ -728,7 +487,7 @@ export default function CampaignBuilder() {
           role="status"
           className={clsx(
             "fixed left-1/2 top-6 z-[100] -translate-x-1/2 transform rounded-full border px-5 py-2.5 shadow-lg backdrop-blur",
-            toast.tone === "success"
+            toast.type === "success"
               ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
               : "border-red-400/40 bg-red-500/20 text-red-100"
           )}
@@ -1743,10 +1502,18 @@ export default function CampaignBuilder() {
                                 Post {post.index} · Clip: &quot;{post.clipTitle.length > 20 ? post.clipTitle.slice(0, 20) + '...' : post.clipTitle}&quot;
                               </p>
                               <p className="text-xs text-zinc-400 mt-0.5">
-                                → {post.platform} {post.accountName}
+                                → {PLATFORM_META[post.platform]?.label || post.platform} {post.accountName}
                         </p>
                       </div>
-                            <span className="text-xs text-zinc-500 flex-shrink-0">{post.datetime}</span>
+                            <span className="text-xs text-zinc-500 flex-shrink-0">
+                              {post.postTime.toLocaleString(undefined, {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
                           </div>
                         ))}
                         {timelinePreview.length > 3 && !showAllTimeline && (
@@ -1771,8 +1538,8 @@ export default function CampaignBuilder() {
                       <div className="mt-4 pt-3 border-t border-white/20 text-xs text-zinc-400">
                         Campaign runs for {(() => {
                           if (frequency === "all-once" || timelinePreview.length <= 1) return "instant deployment";
-                          const first = new Date(timelinePreview[0].datetime);
-                          const last = new Date(timelinePreview[timelinePreview.length - 1].datetime);
+                          const first = timelinePreview[0].postTime;
+                          const last = timelinePreview[timelinePreview.length - 1].postTime;
                           const diffMs = last.getTime() - first.getTime();
                           const hours = Math.round(diffMs / (1000 * 60 * 60));
                           const days = Math.floor(hours / 24);
@@ -2598,44 +2365,6 @@ export default function CampaignBuilder() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">{label}</p>
-      <div className="text-sm text-zinc-200">{children}</div>
-    </div>
-  );
-}
-
-function PerformanceRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-zinc-400">{label}</span>
-      <span className="font-medium text-white">{value}</span>
-    </div>
-  );
-}
-
-function ReviewRow({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-white/20 bg-black/70 p-4">
-      <div className="flex items-center justify-between text-sm text-zinc-300">
-        <p className="font-semibold text-white">{label}</p>
-        {value && <p className="text-zinc-400">{value}</p>}
-      </div>
-      {children}
     </div>
   );
 }
