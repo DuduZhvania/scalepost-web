@@ -5,12 +5,14 @@ import React, { useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Video, MoreHorizontal, ChevronLeft, ChevronRight, ExternalLink, Share2, BarChart3 } from 'lucide-react';
 import { type TopClip } from '@/hooks/useTopClips';
+import { useTheme } from '@/components/ui/providers/ThemeProvider';
 
 interface TopClipsCarouselProps {
   clips: TopClip[];
 }
 
 export function TopClipsCarousel({ clips }: TopClipsCarouselProps) {
+  const { theme } = useTheme();
   const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'tiktok' | 'youtube' | 'instagram' | 'x'>('all');
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -58,25 +60,57 @@ export function TopClipsCarousel({ clips }: TopClipsCarouselProps) {
 
   if (clips.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur">
-        <h3 className="mb-4 text-lg font-bold">Top Performing Clips</h3>
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/10 bg-white/[0.04] py-12 text-center">
-          <Video className="h-12 w-12 text-gray-600" />
-          <p className="text-gray-500">No clips generated yet</p>
+      <div
+        className="relative rounded-2xl p-6 transition-all duration-300 border shadow-sm"
+        style={{
+          background: theme === 'dark'
+            ? '#171717'
+            : 'linear-gradient(145deg, rgba(255,255,255,0.75) 0%, rgba(245,247,255,0.75) 100%)',
+          borderColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+          boxShadow: theme === 'dark'
+            ? '0 2px 8px rgba(0,0,0,0.3)'
+            : '0 3px 12px rgba(0,0,0,0.04), inset 0 0 12px rgba(255,255,255,0.5)'
+        }}
+      >
+        <h3 className="mb-4 text-lg font-bold text-gray-900" style={{
+          color: theme === 'dark' ? '#fafafa' : undefined
+        }}>Top Performing Clips</h3>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 py-12 text-center bg-gray-50/50" style={{
+          borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : undefined,
+          background: theme === 'dark' ? 'rgba(10,10,10,0.5)' : undefined
+        }}>
+          <Video className="h-12 w-12 text-gray-600" style={{
+            color: theme === 'dark' ? '#a1a1a1' : undefined
+          }} />
+          <p className="text-gray-600" style={{
+            color: theme === 'dark' ? '#a1a1a1' : undefined
+          }}>No clips generated yet</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="group relative animate-fade-in overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur transition-all duration-300">
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition-all duration-300 group-hover:opacity-80">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-transparent to-purple-500/10" />
-      </div>
+    <div
+      className="group relative animate-fade-in overflow-hidden rounded-2xl p-6 transition-all duration-300 border shadow-sm"
+      style={{
+        background: theme === 'dark'
+          ? '#171717'
+          : 'linear-gradient(145deg, rgba(255,255,255,0.75) 0%, rgba(245,247,255,0.75) 100%)',
+        borderColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        boxShadow: theme === 'dark'
+          ? '0 2px 8px rgba(0,0,0,0.3)'
+          : '0 3px 12px rgba(0,0,0,0.04), inset 0 0 12px rgba(255,255,255,0.5)'
+      }}
+    >
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-lg font-bold">Top Performing Clips</h3>
-          <p className="text-sm text-gray-500">Your standout stories across every network</p>
+          <h3 className="text-lg font-bold text-gray-900" style={{
+            color: theme === 'dark' ? '#fafafa' : undefined
+          }}>Top Performing Clips</h3>
+          <p className="text-sm text-gray-600" style={{
+            color: theme === 'dark' ? '#a1a1a1' : undefined
+          }}>Your standout stories across every network</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {platformFilters.map((filter) => (
@@ -85,9 +119,18 @@ export function TopClipsCarousel({ clips }: TopClipsCarouselProps) {
               onClick={() => setSelectedPlatform(filter.value)}
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all duration-300 ${
                 selectedPlatform === filter.value
-                  ? 'border-cyan-300/70 bg-cyan-400/20 text-white shadow-[0_0_18px_rgba(56,189,248,0.35)]'
-                  : 'border-transparent bg-white/[0.06] text-gray-400 hover:bg-white/[0.1] hover:text-white'
+                  ? theme === 'dark'
+                    ? 'shadow-sm'
+                    : 'border-cyan-500 bg-cyan-100 text-cyan-700 shadow-sm'
+                  : theme === 'dark'
+                    ? 'border-transparent'
+                    : 'border-gray-200 bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
+              style={{
+                background: theme === 'dark' ? (selectedPlatform === filter.value ? '#e5e5e5' : 'transparent') : undefined,
+                borderColor: theme === 'dark' ? (selectedPlatform === filter.value ? '#e5e5e5' : 'transparent') : undefined,
+                color: theme === 'dark' ? (selectedPlatform === filter.value ? '#171717' : '#fafafa') : undefined
+              }}
             >
               {filter.label}
             </button>
@@ -97,9 +140,9 @@ export function TopClipsCarousel({ clips }: TopClipsCarouselProps) {
 
       {/* Clips grid */}
       {filteredClips.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] py-12 text-center text-sm text-gray-500">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-900/50 py-12 text-center text-sm text-gray-600 dark:text-gray-400">
           <span>No standout clips for this platform just yet.</span>
-          <span className="text-xs text-gray-600">Adjust filters or distribute fresh content.</span>
+          <span className="text-xs text-gray-500 dark:text-gray-500">Adjust filters or distribute fresh content.</span>
         </div>
       ) : (
         <div className="relative group">

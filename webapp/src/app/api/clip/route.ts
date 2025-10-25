@@ -322,28 +322,55 @@ export async function DELETE(req: NextRequest) {
 
     if (!clipId) {
       return NextResponse.json(
-        { error: 'clip id is required' },
+        { error: 'Clip ID is required' },
         { status: 400 }
       );
     }
 
-    const deleted = await db
-      .delete(clips)
+    // First check if the clip exists
+    const existingClip = await db
+      .select({ id: clips.id })
+      .from(clips)
       .where(eq(clips.id, clipId))
-      .returning({ id: clips.id });
+      .limit(1);
 
-    if (!deleted.length) {
+    if (!existingClip.length) {
       return NextResponse.json(
         { error: 'Clip not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    // Delete the clip (cascade will handle related posts)
+    await db
+      .delete(clips)
+      .where(eq(clips.id, clipId));
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'Clip deleted successfully'
+    });
   } catch (error) {
     console.error('Error deleting clip:', error);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('foreign key')) {
+        return NextResponse.json(
+          { error: 'Cannot delete clip: it is being used in active campaigns' },
+          { status: 409 }
+        );
+      }
+      if (error.message.includes('constraint')) {
+        return NextResponse.json(
+          { error: 'Cannot delete clip due to database constraints' },
+          { status: 409 }
+        );
+      }
+    }
+
     return NextResponse.json(
-      { error: 'Failed to delete clip' },
+      { error: 'Failed to delete clip. Please try again.' },
       { status: 500 }
     );
   }

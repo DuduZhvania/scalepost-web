@@ -127,7 +127,7 @@ export default function PlatformPage({ params }: PlatformPageProps) {
 
   if (!isKnownPlatform) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
         <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center gap-6 px-6 text-center">
           <div className="text-3xl font-semibold text-white">Platform not found</div>
           <p className="text-sm text-gray-400">
@@ -147,7 +147,7 @@ export default function PlatformPage({ params }: PlatformPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8">
         <div className="flex flex-col gap-2 text-sm text-gray-400">
           <Link
@@ -185,7 +185,7 @@ export default function PlatformPage({ params }: PlatformPageProps) {
           />
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <section className="rounded-xl border p-6" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)' }}>
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-white">Add new account</h2>
@@ -242,7 +242,7 @@ export default function PlatformPage({ params }: PlatformPageProps) {
           </form>
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <section className="rounded-xl border p-6" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)' }}>
           <header className="mb-6">
             <h2 className="text-lg font-semibold text-white">Platform performance</h2>
             <p className="text-sm text-gray-400">
@@ -286,7 +286,7 @@ export default function PlatformPage({ params }: PlatformPageProps) {
           )}
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6">
+        <section className="rounded-xl border p-6" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)' }}>
           <header className="mb-6">
             <h2 className="text-lg font-semibold text-white">All accounts</h2>
             <p className="text-sm text-gray-400">
@@ -316,7 +316,7 @@ function MetricCard({
   format?: 'default' | 'compact';
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+    <div className="rounded-xl border p-5" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)' }}>
       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-white">{formatNumber(value, format)}</p>
     </div>

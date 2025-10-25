@@ -5,8 +5,10 @@ import React, { useState } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { PlatformAccordion } from '@/components/accounts/PlatformAccordion';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useTheme } from '@/components/ui/providers/ThemeProvider';
 
 export default function AccountsPage() {
+  const { theme } = useTheme();
   const [filterPlatform, setFilterPlatform] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const { data: allAccounts, loading } = useAccounts();
@@ -30,12 +32,17 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
+    <div
+      className="min-h-screen text-gray-900 dark:text-white p-8 transition-colors duration-200 dark:bg-black"
+      style={{
+        background: theme !== 'dark' ? 'linear-gradient(145deg, #f4f2ff 0%, #eef2ff 50%, #f7f9ff 100%)' : undefined
+      }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Connected Accounts</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Connected Accounts</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Manage all your social media accounts across platforms
           </p>
         </div>
@@ -48,8 +55,8 @@ export default function AccountsPage() {
               onClick={() => setFilterPlatform(undefined)}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
                 !filterPlatform
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 border border-zinc-800 text-gray-400 hover:text-white'
+                  ? 'bg-white dark:bg-zinc-900 text-black dark:text-white border border-gray-200 dark:border-zinc-700'
+                  : 'bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               All
@@ -58,8 +65,8 @@ export default function AccountsPage() {
               onClick={() => setFilterPlatform('tiktok')}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
                 filterPlatform === 'tiktok'
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 border border-zinc-800 text-gray-400 hover:text-white'
+                  ? 'bg-white dark:bg-zinc-900 text-black dark:text-white border border-gray-200 dark:border-zinc-700'
+                  : 'bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               TikTok
@@ -68,8 +75,8 @@ export default function AccountsPage() {
               onClick={() => setFilterPlatform('youtube')}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
                 filterPlatform === 'youtube'
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 border border-zinc-800 text-gray-400 hover:text-white'
+                  ? 'bg-white dark:bg-zinc-900 text-black dark:text-white border border-gray-200 dark:border-zinc-700'
+                  : 'bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               YouTube
@@ -78,8 +85,8 @@ export default function AccountsPage() {
               onClick={() => setFilterPlatform('instagram')}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
                 filterPlatform === 'instagram'
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 border border-zinc-800 text-gray-400 hover:text-white'
+                  ? 'bg-white dark:bg-zinc-900 text-black dark:text-white border border-gray-200 dark:border-zinc-700'
+                  : 'bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               Instagram
@@ -88,8 +95,8 @@ export default function AccountsPage() {
               onClick={() => setFilterPlatform('x')}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
                 filterPlatform === 'x'
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 border border-zinc-800 text-gray-400 hover:text-white'
+                  ? 'bg-white dark:bg-zinc-900 text-black dark:text-white border border-gray-200 dark:border-zinc-700'
+                  : 'bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               X

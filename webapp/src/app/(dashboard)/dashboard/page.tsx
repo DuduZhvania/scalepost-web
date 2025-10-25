@@ -10,6 +10,7 @@ import { TopClipsCarousel } from '@/components/ui/dashboard/TopClipsCarousel';
 import { useDashboardKpis } from '@/hooks/useDashboardKpis';
 import { usePerformanceSeries, type Range } from '@/hooks/usePerformanceSeries';
 import { useTopClips } from '@/hooks/useTopClips';
+import { useTheme } from '@/components/ui/providers/ThemeProvider';
 
 const TIMEFRAME_OPTIONS: { value: Range; label: string }[] = [
   { value: 'day', label: 'Last 7 Days' },
@@ -20,6 +21,7 @@ const TIMEFRAME_OPTIONS: { value: Range; label: string }[] = [
 
 export default function DashboardPage() {
   const [range, setRange] = useState<Range>('month');
+  const { theme } = useTheme();
   const { data: kpis, loading: kpisLoading } = useDashboardKpis();
   const { data: seriesData, loading: seriesLoading } = usePerformanceSeries(range);
   const { data: topClips, loading: clipsLoading } = useTopClips();
@@ -88,31 +90,54 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-gray-900 transition-colors duration-200" style={{
+      background: theme === 'dark' ? '#0a0a0a' : 'linear-gradient(145deg, #e8e5ff 0%, #f0f4ff 35%, #f7f9ff 100%)',
+      color: theme === 'dark' ? '#fafafa' : undefined
+    }}>
       {/* Main Content */}
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
         {/* Title Row */}
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-cyan-300/80">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/50 bg-blue-50/80 px-3 py-1 text-xs font-medium text-blue-700 w-fit" style={{
+              borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : undefined,
+              background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : undefined,
+              color: theme === 'dark' ? '#a1a1a1' : undefined
+            }}>
               <Sparkles className="h-3 w-3" />
               Vulgo Control Center
             </div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-semibold text-gray-900" style={{
+              color: theme === 'dark' ? '#fafafa' : undefined
+            }}>Dashboard</h1>
+            <p className="text-gray-600" style={{
+              color: theme === 'dark' ? '#a1a1a1' : undefined
+            }}>
               Welcome back! Here&apos;s your content performance overview.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-gray-300 transition hover:border-cyan-300/60 hover:text-white">
-              <CalendarDays className="h-4 w-4 text-cyan-300" />
+            <div className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-all duration-300 hover:shadow-md bg-white/80 border border-gray-200 text-gray-900" style={{
+              background: theme === 'dark' ? '#171717' : undefined,
+              borderColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : undefined,
+              color: theme === 'dark' ? '#fafafa' : undefined
+            }}>
+              <CalendarDays className="h-4 w-4 text-gray-600" style={{
+                color: theme === 'dark' ? '#a1a1a1' : undefined
+              }} />
               <select
-                className="bg-transparent text-sm font-medium transition-all duration-300 focus:outline-none"
+                className="bg-transparent text-sm font-medium transition-all duration-300 focus:outline-none text-gray-900"
                 value={range}
                 onChange={(event) => setRange(event.target.value as Range)}
+                style={{
+                  color: theme === 'dark' ? '#fafafa' : undefined
+                }}
               >
                 {TIMEFRAME_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value} className="bg-zinc-900">
+                  <option key={option.value} value={option.value} style={{
+                    background: theme === 'dark' ? '#171717' : '#ffffff',
+                    color: theme === 'dark' ? '#fafafa' : '#111827'
+                  }}>
                     {option.label}
                   </option>
                 ))}
@@ -120,14 +145,23 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/studio"
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-5 py-2 text-sm font-medium text-gray-700 transition-all duration-300 hover:bg-gray-200 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:border-cyan-300/60 dark:hover:bg-white/[0.08]"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 bg-white border border-gray-300 shadow-sm text-gray-900"
+              style={{
+                background: theme === 'dark' ? '#e5e5e5' : undefined,
+                color: theme === 'dark' ? '#171717' : undefined,
+                borderColor: theme === 'dark' ? 'transparent' : undefined
+              }}
             >
               <Video className="h-4 w-4" />
               Create Video
             </Link>
             <Link
               href="/campaigns"
-              className="distribute-glow relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 px-6 py-2 text-sm font-semibold text-white transition-all duration-300 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 dark:from-cyan-400 dark:via-blue-400 dark:to-fuchsia-500 dark:hover:from-cyan-300 dark:hover:via-blue-300 dark:hover:to-fuchsia-400"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-2 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 shadow-md"
+              style={{
+                background: theme === 'dark' ? '#e5e5e5' : 'linear-gradient(to right, rgb(147 51 234), rgb(6 182 212))',
+                color: theme === 'dark' ? '#171717' : undefined
+              }}
             >
               <Send className="h-4 w-4" />
               Distribute
@@ -141,7 +175,7 @@ export default function DashboardPage() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-[140px] animate-pulse rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors duration-200 dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+                className="h-[120px] animate-pulse rounded-2xl transition-all duration-200 bg-white/75 dark:bg-black border border-gray-200/50 dark:border-white/20 shadow-sm dark:shadow-2xl dark:shadow-black/30 backdrop-blur-sm"
               />
             ))}
           </div>
@@ -186,43 +220,14 @@ export default function DashboardPage() {
           )
         )}
 
-        {/* Quick Actions */}
-        <div className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-cyan-300/40 hover:shadow-md dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-          <div className="pointer-events-none absolute inset-0 opacity-60 transition-all duration-300 group-hover:opacity-80 dark:opacity-0">
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-100 via-transparent to-purple-100 dark:from-cyan-400/10 dark:to-purple-500/10" />
-          </div>
-          <div className="relative mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold tracking-wide text-gray-800 transition-colors duration-200 dark:text-gray-300">Quick Actions</h2>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Stay agile with your next move</span>
-          </div>
-          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {quickActions.map((action) => (
-              <Link
-                key={action.label}
-                href={action.href}
-                className="group flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm font-semibold text-cyan-600 transition-all duration-300 hover:border-cyan-300/60 hover:bg-cyan-50 hover:text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-200 dark:hover:bg-cyan-400/15 dark:hover:text-white sm:w-auto sm:flex-1"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-base text-cyan-600 transition-all duration-300 group-hover:bg-cyan-500/20 dark:bg-cyan-500/20 dark:text-cyan-200 dark:group-hover:bg-cyan-400/30">
-                    {action.emoji}
-                  </span>
-                  <span className="relative transition-all duration-300 group-hover:text-cyan-700 dark:group-hover:text-white">
-                    {action.label}
-                    <span className="absolute -bottom-1 left-0 h-0.5 w-full scale-x-0 bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400 opacity-0 transition-transform duration-300 group-hover:scale-x-100 group-hover:opacity-100 dark:from-cyan-400 dark:via-blue-400 dark:to-purple-500" />
-                  </span>
-                </span>
-                <span className="text-xs uppercase tracking-widest text-cyan-600 transition-all duration-300 group-hover:text-cyan-700 dark:text-cyan-200/70 dark:group-hover:text-white">
-                  Go
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
         {/* Performance Chart */}
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="w-full">
           {seriesLoading ? (
-            <div className="h-[360px] animate-pulse rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors duration-200 dark:border-white/5 dark:bg-white/[0.05]" />
+            <div className="h-[360px] animate-pulse rounded-2xl transition-colors duration-200 bg-gray-100 shadow-sm" style={{
+              background: theme === 'dark' ? '#171717' : undefined,
+              border: theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : undefined,
+              boxShadow: theme === 'dark' ? '0 2px 8px rgba(0,0,0,0.3)' : undefined
+            }} />
           ) : (
             <PerformanceChart
               data={seriesData}
@@ -230,48 +235,6 @@ export default function DashboardPage() {
               onRangeChange={setRange}
             />
           )}
-
-          {/* Recent Activity Feed */}
-          <div className="relative flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">Recent Activity</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Live updates across the team</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-cyan-600 transition-colors duration-200 dark:text-cyan-300">
-                <span className="flex h-2.5 w-2.5 items-center justify-center">
-                  <span className="live-pulse-dot" />
-                </span>
-                Live
-              </div>
-            </div>
-            <div className="flex flex-col gap-4">
-              {recentActivity.map((item) => (
-                <div
-                  key={`${item.message}-${item.time}`}
-                  className="flex items-start gap-3 rounded-xl border border-transparent bg-gray-50 p-3 opacity-0 shadow-sm transition-all duration-300 animate-[fadeInUp_0.4s_ease_forwards] hover:border-cyan-200 hover:bg-white dark:border-transparent dark:bg-white/[0.04] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] dark:hover:border-cyan-300/30"
-                >
-                  {(() => {
-                    const platformStyle =
-                      activityPlatformStyles[
-                        item.platform as keyof typeof activityPlatformStyles
-                      ] ?? activityPlatformStyles.campaigns;
-                    return (
-                      <div
-                        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${platformStyle.gradient} text-xs font-semibold text-white shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]`}
-                      >
-                        {platformStyle.icon}
-                      </div>
-                    );
-                  })()}
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-700 transition-colors duration-200 dark:text-gray-200">{item.message}</p>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{item.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Top Clips Carousel */}

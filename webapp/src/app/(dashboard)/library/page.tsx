@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUploadModal } from "@/hooks/useUploadModal";
 import { StatsPanel } from "@/components/library/StatsPanel";
+import { useTheme } from "@/components/ui/providers/ThemeProvider";
 import {
   Play,
   Scissors,
@@ -182,8 +183,8 @@ const STATUS_META: Record<string, StatusMeta> = {
   uploaded: {
     label: "Uploaded",
     badgeClass:
-      "border border-indigo-400/40 bg-indigo-500/10 text-indigo-200",
-    indicatorClass: "bg-indigo-400 animate-[pulseGlow_2.2s_ease-in-out_infinite]",
+      "border border-white/20 bg-white/10 text-white/70",
+    indicatorClass: "bg-white/70 animate-[pulseGlow_2.2s_ease-in-out_infinite]",
     Icon: CheckCircle2,
   },
   posted: {
@@ -228,6 +229,11 @@ function getStatusMeta(status: string): StatusMeta {
 function pluralizeClips(count: number) {
   const safe = Number.isFinite(count) ? Math.max(count, 0) : 0;
   return safe === 1 ? "1 clip" : `${safe} clips`;
+}
+
+function truncateText(text: string, maxLength: number = 15) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
 }
 
 function getFriendlyName(asset: MediaAsset) {
@@ -457,6 +463,7 @@ function extractClipsFromPayload(payload: unknown): unknown[] {
 
 export default function LibraryPage() {
   const { open } = useUploadModal();
+  const { theme } = useTheme();
   const [tabData, setTabData] = useState<TabData>({
     all: [],
     videos: [],
@@ -493,6 +500,10 @@ export default function LibraryPage() {
   const closeVideoPlayer = useCallback(() => {
     setVideoPlayer(() => ({ ...INITIAL_VIDEO_PLAYER_STATE }));
   }, []);
+  const pageBackground =
+    theme === "dark"
+      ? "#000000"
+      : "linear-gradient(145deg, #f4f2ff 0%, #eef2ff 50%, #f7f9ff 100%)";
 
   useEffect(() => {
     if (!videoPlayer.isOpen) {
@@ -1379,7 +1390,7 @@ export default function LibraryPage() {
           delete next[actionKey];
           return next;
         });
-      }, 2000);
+      }, 1000);
     } catch (err) {
       console.error("Failed to delete clip:", err);
       setActionState((prev) => ({
@@ -1584,19 +1595,33 @@ export default function LibraryPage() {
             ? "flex flex-col"
             : "flex flex-col md:flex-row md:items-stretch",
           isSelected
-            ? "border-cyan-400/60 shadow-[0_40px_90px_-45px_rgba(56,189,248,0.7)] ring-2 ring-cyan-400/40"
-            : "border-white/10 shadow-[0_30px_85px_-50px_rgba(0,0,0,0.85)] hover:-translate-y-2 hover:border-cyan-400/40 hover:shadow-[0_45px_120px_-60px_rgba(56,189,248,0.65)]"
+            ? "shadow-[0_40px_90px_-45px_rgba(229,229,229,0.3)] ring-2"
+            : "border-white/10 shadow-[0_30px_85px_-50px_rgba(0,0,0,0.85)] hover:-translate-y-2"
         )}
         style={{
           animation: `fadeSlideUp 0.45s ease-out ${index * 0.05}s both`,
+          borderColor: isSelected ? 'rgba(229,229,229,0.6)' : undefined,
+          boxShadow: isSelected ? '0 40px 90px -45px rgba(229,229,229,0.3), 0 0 0 2px rgba(229,229,229,0.4)' : undefined
+        }}
+        onMouseEnter={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.borderColor = 'rgba(229,229,229,0.4)';
+            e.currentTarget.style.boxShadow = '0 45px 120px -60px rgba(229,229,229,0.25)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.borderColor = '';
+            e.currentTarget.style.boxShadow = '';
+          }
         }}
       >
         <div
           className={clsx(
             "relative overflow-hidden",
             isGridView
-              ? "aspect-video w-full"
-              : "aspect-video w-full md:w-72 md:flex-shrink-0"
+              ? "aspect-[9/16] w-full"
+              : "aspect-[9/16] w-full md:w-72 md:flex-shrink-0"
           )}
         >
           {asset.thumbnail ? (
@@ -1675,12 +1700,12 @@ export default function LibraryPage() {
               event.stopPropagation();
               handleToggleSelect(asset.id);
             }}
-            className={clsx(
-              "flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition-all duration-200 backdrop-blur",
-              isSelected
-                ? "border-cyan-400/80 bg-cyan-500/20 text-cyan-200"
-                : "opacity-0 group-hover:opacity-100 hover:border-cyan-400/60 hover:text-cyan-200"
-            )}
+             className={clsx(
+               "flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition-all duration-200 backdrop-blur",
+               isSelected
+                 ? "border-white/60 bg-white/20 text-white"
+                 : "opacity-0 group-hover:opacity-100 hover:border-white/40 hover:text-white"
+             )}
           >
             {isSelected ? (
               <CheckCircle2 className="h-5 w-5" />
@@ -1786,10 +1811,16 @@ export default function LibraryPage() {
         >
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-white sm:text-xl">
-                {friendlyName}
+              <h3 className="text-sm font-semibold text-white">
+                {truncateText(friendlyName)}
               </h3>
-              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-200">
+              <span className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                style={{
+                  borderColor: 'rgba(229,229,229,0.4)',
+                  background: 'rgba(229,229,229,0.15)',
+                  color: '#e5e5e5'
+                }}
+              >
                 <Scissors className="h-3.5 w-3.5" />
                 {clipLabel}
               </span>
@@ -1824,7 +1855,13 @@ export default function LibraryPage() {
             </div>
           </div>
           {actionMessage && (
-            <div className="rounded-2xl border border-cyan-400/40 bg-cyan-400/15 px-4 py-2 text-xs text-cyan-100">
+            <div className="rounded-2xl border px-4 py-2 text-xs"
+              style={{
+                borderColor: 'rgba(229,229,229,0.4)',
+                background: 'rgba(229,229,229,0.15)',
+                color: '#e5e5e5'
+              }}
+            >
               {actionMessage}
             </div>
           )}
@@ -1840,9 +1877,13 @@ export default function LibraryPage() {
                 }}
                 disabled={actions.generating || actions.deleting || actions.renaming}
                 className={clsx(
-                  "pointer-events-auto inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 px-3 py-2 text-sm font-semibold text-black transition duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-1 focus:ring-offset-black disabled:cursor-not-allowed disabled:opacity-60",
+                  "pointer-events-auto inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 ease-out focus:outline-none disabled:cursor-not-allowed disabled:opacity-60",
                   "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 delay-75"
                 )}
+                style={{
+                  background: '#e5e5e5',
+                  color: '#000000'
+                }}
               >
                 {actions.generating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1966,10 +2007,16 @@ export default function LibraryPage() {
             </div>
             <div className="flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-lg font-semibold text-white sm:text-xl">
-                  {friendlyName}
+                <h3 className="text-sm font-semibold text-white">
+                  {truncateText(friendlyName)}
                 </h3>
-                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-cyan-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-200">
+                <span className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{
+                    borderColor: 'rgba(229,229,229,0.4)',
+                    background: 'rgba(229,229,229,0.15)',
+                    color: '#e5e5e5'
+                  }}
+                >
                   <Scissors className="h-3.5 w-3.5" />
                   {clipLabel}
                 </span>
@@ -1988,7 +2035,13 @@ export default function LibraryPage() {
           </div>
         </div>
         {actionMessage && (
-          <div className="relative z-10 mt-4 rounded-2xl border border-cyan-400/40 bg-cyan-400/15 px-4 py-2 text-xs text-cyan-100">
+          <div className="relative z-10 mt-4 rounded-2xl border px-4 py-2 text-xs"
+            style={{
+              borderColor: 'rgba(229,229,229,0.4)',
+              background: 'rgba(229,229,229,0.15)',
+              color: '#e5e5e5'
+            }}
+          >
             {actionMessage}
           </div>
         )}
@@ -2043,7 +2096,11 @@ export default function LibraryPage() {
                   "noopener,noreferrer"
                 );
               }}
-              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 py-2 text-sm font-semibold text-white transition duration-200 hover:border-cyan-300/50 hover:text-cyan-100"
+              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 hover:opacity-90"
+              style={{
+                background: '#e5e5e5',
+                color: '#000000'
+              }}
             >
               <ExternalLink className="h-4 w-4" />
               <span>Open Link</span>
@@ -2055,7 +2112,11 @@ export default function LibraryPage() {
                 handleViewStats(asset);
               }}
               disabled={actions.deleting || actions.renaming}
-              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 py-2 text-sm font-semibold text-white transition duration-200 hover:border-cyan-300/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                background: '#e5e5e5',
+                color: '#000000'
+              }}
             >
               <TrendingUp className="h-4 w-4" />
               <span>View Stats</span>
@@ -2067,7 +2128,11 @@ export default function LibraryPage() {
                 window.location.href = '/studio';
               }}
               disabled={actions.generating || actions.deleting || actions.renaming}
-              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 px-3 py-2 text-sm font-semibold text-black transition duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                background: '#e5e5e5',
+                color: '#000000'
+              }}
             >
               <Sparkles className="h-4 w-4" />
               <span>Generate Clips</span>
@@ -2116,19 +2181,33 @@ export default function LibraryPage() {
             ? "flex flex-col"
             : "flex flex-col md:flex-row md:items-stretch",
           isSelected
-            ? "border-purple-400/70 shadow-[0_40px_95px_-50px_rgba(168,85,247,0.6)] ring-2 ring-purple-400/40"
-            : "border-purple-500/20 shadow-[0_30px_85px_-55px_rgba(76,29,149,0.75)] hover:-translate-y-2 hover:border-purple-400/40 hover:shadow-[0_45px_120px_-65px_rgba(168,85,247,0.6)]"
+            ? "shadow-[0_40px_95px_-50px_rgba(229,229,229,0.3)] ring-2"
+            : "shadow-[0_30px_85px_-55px_rgba(76,29,149,0.75)] hover:-translate-y-2"
         )}
         style={{
           animation: `fadeSlideUp 0.45s ease-out ${index * 0.05}s both`,
+          borderColor: isSelected ? 'rgba(229,229,229,0.6)' : 'rgba(229,229,229,0.2)',
+          boxShadow: isSelected ? '0 40px 95px -50px rgba(229,229,229,0.3), 0 0 0 2px rgba(229,229,229,0.4)' : undefined
+        }}
+        onMouseEnter={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.borderColor = 'rgba(229,229,229,0.4)';
+            e.currentTarget.style.boxShadow = '0 45px 120px -65px rgba(229,229,229,0.25)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.borderColor = 'rgba(229,229,229,0.2)';
+            e.currentTarget.style.boxShadow = '';
+          }
         }}
       >
         <div
           className={clsx(
             "relative overflow-hidden",
             isGridView
-              ? "aspect-video w-full"
-              : "aspect-video w-full md:w-64 md:flex-shrink-0"
+              ? "aspect-[9/16] w-full"
+              : "aspect-[9/16] w-full md:w-64 md:flex-shrink-0"
           )}
         >
           {clip.thumbnail ? (
@@ -2184,7 +2263,7 @@ export default function LibraryPage() {
             </div>
           </button>
           <div className="absolute left-4 top-4 z-30 flex flex-col items-start gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full border border-purple-300/40 bg-purple-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-100 backdrop-blur">
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/70 backdrop-blur">
               <Video className="h-3.5 w-3.5" />
               Clip
             </span>
@@ -2194,12 +2273,12 @@ export default function LibraryPage() {
                 event.stopPropagation();
                 handleToggleSelect(selectionKey);
               }}
-              className={clsx(
-                "flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white transition-all duration-200 backdrop-blur",
-                isSelected
-                  ? "border-purple-300/80 bg-purple-500/20 text-purple-100"
-                  : "opacity-0 group-hover:opacity-100 hover:border-purple-300/60 hover:text-purple-100"
-              )}
+               className={clsx(
+                 "flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white transition-all duration-200 backdrop-blur",
+                 isSelected
+                   ? "border-white/60 bg-white/20 text-white"
+                   : "opacity-0 group-hover:opacity-100 hover:border-white/40 hover:text-white"
+               )}
             >
               {isSelected ? (
                 <CheckCircle2 className="h-5 w-5" />
@@ -2283,8 +2362,8 @@ export default function LibraryPage() {
         >
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-white sm:text-xl">
-                {friendlyTitle}
+              <h3 className="text-sm font-semibold text-white">
+                {truncateText(friendlyTitle)}
               </h3>
               <span
                 className={clsx(
@@ -2315,19 +2394,12 @@ export default function LibraryPage() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewClipStats(clip);
-              }}
-              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 py-2 text-sm font-semibold text-white transition duration-200 hover:border-cyan-300/50 hover:text-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-200/40 focus:ring-offset-1 focus:ring-offset-black"
-            >
-              <TrendingUp className="h-4 w-4" />
-              <span>View Stats</span>
-            </button>
-            <button
-              type="button"
-              className="pointer-events-auto inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-500 px-3 py-2 text-sm font-semibold text-black transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 focus:ring-offset-1 focus:ring-offset-black disabled:cursor-not-allowed disabled:opacity-60"
+              className="pointer-events-auto inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 hover:opacity-90 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               disabled={actions.deleting || actions.renaming}
+              style={{
+                background: '#e5e5e5',
+                color: '#000000'
+              }}
             >
               <Upload className="h-4 w-4" />
               <span>Post Now</span>
@@ -2353,7 +2425,10 @@ export default function LibraryPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black px-6">
+      <main
+        className="flex min-h-screen items-center justify-center px-6"
+        style={{ background: pageBackground }}
+      >
         <div className="text-center">
           <p className="mb-4 text-zinc-300">{error}</p>
           <button
@@ -2412,18 +2487,17 @@ export default function LibraryPage() {
     emptyStateConfig.secondaryAction?.icon ?? null;
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-950 to-black text-white">
+    <main
+      className="relative min-h-screen text-gray-900 dark:text-white"
+      style={{ background: pageBackground }}
+    >
       <div className="mx-auto w-full max-w-7xl px-6 py-10">
         <header className="mb-10 space-y-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200/80">
-                <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
-                Premium Library
-              </span>
-              <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
                 <h1 className="text-3xl font-semibold sm:text-4xl md:text-5xl">
-                  <span className="bg-gradient-to-r from-white via-cyan-200 to-purple-300 bg-clip-text text-transparent">
+                  <span style={{ color: '#e5e5e5' }}>
                     Content Library
                   </span>
                 </h1>
@@ -2440,7 +2514,11 @@ export default function LibraryPage() {
               <button
                 type="button"
                 onClick={() => open({ tab: "file" })}
-                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_20px_60px_-25px_rgba(56,189,248,0.75)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_30px_80px_-30px_rgba(99,102,241,0.6)] active:scale-[0.97]"
+                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 active:scale-[0.97]"
+                style={{
+                  background: '#e5e5e5',
+                  color: '#000000'
+                }}
               >
                 <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-20" />
                 <Upload className="h-4 w-4" />
@@ -2449,15 +2527,23 @@ export default function LibraryPage() {
               <button
                 type="button"
                 onClick={() => open({ tab: "url" })}
-                className="group inline-flex items-center gap-2 rounded-xl border border-cyan-400/40 bg-white/[0.05] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-300/60 hover:bg-white/[0.08] active:scale-[0.97]"
+                className="group inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 active:scale-[0.97]"
+                style={{
+                  background: '#e5e5e5',
+                  color: '#000000'
+                }}
               >
-                <LinkIcon className="h-4 w-4 text-cyan-200" />
+                <LinkIcon className="h-4 w-4" />
                 <span>Import Link</span>
               </button>
               <button
                 type="button"
                 onClick={() => void handleRefresh()}
-                className="group inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.08] active:scale-[0.97]"
+                className="group inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:opacity-90 active:scale-[0.97]"
+                style={{
+                  background: '#e5e5e5',
+                  color: '#000000'
+                }}
               >
                 <RefreshCcw
                   className={clsx(
@@ -2555,9 +2641,12 @@ export default function LibraryPage() {
                       className={clsx(
                         "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
                         isActiveMode
-                          ? "bg-gradient-to-r from-cyan-400/90 via-sky-400/70 to-purple-500/80 text-black shadow-[0_12px_24px_-18px_rgba(56,189,248,0.65)]"
+                          ? "text-black"
                           : "text-zinc-400 hover:text-white"
                       )}
+                      style={isActiveMode ? {
+                        background: '#e5e5e5'
+                      } : undefined}
                     >
                       {mode === "grid" ? (
                         <LayoutGrid className="h-4 w-4" />
@@ -2578,10 +2667,11 @@ export default function LibraryPage() {
         <section className="mb-10">
           <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-1 backdrop-blur">
             <div
-              className="pointer-events-none absolute bottom-1 h-1 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 transition-transform duration-500 ease-out"
+              className="pointer-events-none absolute bottom-1 h-1 rounded-full transition-transform duration-500 ease-out"
               style={{
                 width: `calc(100% / ${TABS.length})`,
                 transform: `translateX(${Math.max(activeTabIndex, 0) * 100}%)`,
+                background: '#e5e5e5'
               }}
             />
             <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
@@ -2606,9 +2696,10 @@ export default function LibraryPage() {
                         className={clsx(
                           "rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide",
                           isActive
-                            ? "bg-gradient-to-r from-cyan-400/80 to-purple-500/70 text-black"
+                            ? "text-black"
                             : "bg-white/[0.08] text-zinc-400"
                         )}
+                        style={isActive ? { background: '#e5e5e5' } : undefined}
                       >
                         {count}
                       </span>

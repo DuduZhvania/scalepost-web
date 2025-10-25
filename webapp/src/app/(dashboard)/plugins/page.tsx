@@ -2,6 +2,7 @@
 "use client";
 
 import { Plug, ExternalLink, Download, Settings as SettingsIcon } from 'lucide-react';
+import { useTheme } from '@/components/ui/providers/ThemeProvider';
 
 interface Plugin {
   id: string;
@@ -71,6 +72,12 @@ const plugins: Plugin[] = [
 ];
 
 export default function PluginsPage() {
+  const { theme } = useTheme();
+  const pageBackground =
+    theme === 'dark'
+      ? '#000000'
+      : 'linear-gradient(145deg, #f4f2ff 0%, #eef2ff 50%, #f7f9ff 100%)';
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'installed':
@@ -95,8 +102,12 @@ export default function PluginsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-7xl mx-auto">
+    <div
+      className="min-h-screen text-gray-900 dark:text-white p-8 relative"
+      style={{ background: pageBackground }}
+    >
+      {/* Blurred content */}
+      <div className="max-w-7xl mx-auto blur-md pointer-events-none select-none">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Plugins</h1>
@@ -106,9 +117,9 @@ export default function PluginsPage() {
         </div>
 
         {/* Featured Banner */}
-        <div className="mb-8 p-6 bg-gradient-to-r from-purple-900/40 to-pink-900/40 border border-purple-800/50 rounded-lg">
+        <div className="mb-8 p-6 bg-gradient-to-r from-purple-900/40 to-purple-800/40 border border-purple-700/50 rounded-lg">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-400 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
               ⚡
             </div>
             <div className="flex-1">
@@ -190,6 +201,24 @@ export default function PluginsPage() {
               </a>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Coming Soon Overlay */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+        <div className="text-center px-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 mb-6 shadow-2xl">
+            <Plug className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-500 via-purple-400 to-purple-500 bg-clip-text text-transparent">
+            Coming Soon
+          </h1>
+          <p className="text-xl text-gray-400 dark:text-gray-300 max-w-md mx-auto">
+            We&apos;re working hard to bring you powerful plugins and integrations.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+            Stay tuned for updates! 🚀
+          </p>
         </div>
       </div>
     </div>

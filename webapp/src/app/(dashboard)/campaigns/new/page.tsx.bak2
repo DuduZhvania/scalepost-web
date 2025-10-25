@@ -159,7 +159,44 @@ const CTA_OPTIONS = [
 
 const TOTAL_SECTIONS = 4;
 
-// Real accounts will be fetched from the API
+const mockAccounts: Account[] = [
+  {
+    id: "acct-1",
+    platform: "tiktok",
+    accountName: "@scaleposthq",
+    followers: 10500,
+  },
+  {
+    id: "acct-2",
+    platform: "tiktok",
+    accountName: "@scalepost.creator",
+    followers: 5200,
+  },
+  {
+    id: "acct-3",
+    platform: "youtube",
+    accountName: "Scalepost Studio",
+    followers: 18700,
+  },
+  {
+    id: "acct-4",
+    platform: "instagram",
+    accountName: "@scalepost",
+    followers: 8900,
+  },
+  {
+    id: "acct-5",
+    platform: "instagram",
+    accountName: "@scalepost.team",
+    followers: 4300,
+  },
+  {
+    id: "acct-6",
+    platform: "twitter",
+    accountName: "@scalepost",
+    followers: 6700,
+  },
+];
 
 const today = new Date();
 const defaultDate = today.toISOString().slice(0, 10);
@@ -286,8 +323,6 @@ export default function CampaignBuilder() {
   const [clipSelectionOpen, setClipSelectionOpen] = useState(false);
   const [clips, setClips] = useState<Clip[]>([]);
   const [clipsLoading, setClipsLoading] = useState(true);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(true);
   const [clipSearch, setClipSearch] = useState("");
   const [clipSort, setClipSort] = useState<ClipSortOption>("recent");
   const [clipLimit, setClipLimit] = useState(12);
@@ -433,12 +468,12 @@ export default function CampaignBuilder() {
   }, []);
 
   const platformAccounts = useMemo(() => {
-    return accounts.reduce<Record<PlatformKey, Account[]>>((acc, account) => {
+    return mockAccounts.reduce<Record<PlatformKey, Account[]>>((acc, account) => {
       acc[account.platform] = acc[account.platform] ?? [];
       acc[account.platform].push(account);
       return acc;
     }, { tiktok: [], youtube: [], instagram: [], twitter: [] });
-  }, [accounts]);
+  }, []);
 
   // Fetch clips from library on mount
   useEffect(() => {
@@ -479,39 +514,6 @@ export default function CampaignBuilder() {
     };
 
     fetchClips();
-  }, []);
-
-  // Fetch accounts from API on mount
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        setAccountsLoading(true);
-        const response = await fetch('/api/accounts');
-        if (!response.ok) {
-          throw new Error('Failed to fetch accounts');
-        }
-        
-        const result = await response.json();
-        const accountsData = result.accounts || [];
-        
-        // Transform API data to match our Account interface
-        const transformedAccounts: Account[] = accountsData.map((account: any) => ({
-          id: account.id,
-          platform: account.platform,
-          accountName: account.handle,
-          followers: 0, // API doesn't provide followers count
-        }));
-        
-        setAccounts(transformedAccounts);
-      } catch (error) {
-        console.error('Error fetching accounts:', error);
-        setAccounts([]);
-      } finally {
-        setAccountsLoading(false);
-      }
-    };
-
-    fetchAccounts();
   }, []);
 
   const filteredClips = useMemo(() => {
@@ -586,8 +588,8 @@ export default function CampaignBuilder() {
   );
 
   const activeAccounts = useMemo(() => {
-    return accounts.filter((account) => selectedAccounts.has(account.id));
-  }, [selectedAccounts, accounts]);
+    return mockAccounts.filter((account) => selectedAccounts.has(account.id));
+  }, [selectedAccounts]);
 
   useEffect(() => {
     setSelectedAccounts((prev) => {
@@ -712,155 +714,22 @@ export default function CampaignBuilder() {
   const handleConfirmLaunch = async () => {
     setLaunching(true);
     try {
-      // Validate required fields
-      if (!campaignName.trim()) {
-        throw new Error('Campaign name is required');
-      }
-      if (selectedClips.size === 0) {
-        throw new Error('Please select at least one clip');
-      }
-      if (selectedAccounts.size === 0) {
-        throw new Error('Please select at least one account');
-      }
-
-      // Prepare campaign data
-      const campaignData = {
-        name: campaignName.trim(),
-        clipIds: Array.from(selectedClips),
-        accountIds: Array.from(selectedAccounts),
-        scheduleType: scheduleType === 'now' ? 'immediate' : 'scheduled',
-        scheduledAt: scheduleType === 'now' ? new Date().toISOString() : new Date().toISOString(),
-        frequency: customPostsPerDay > 1 ? 'hourly' : 'daily',
-        settings: {
-          campaignType,
-          postsPerDay: customPostsPerDay,
-          timingRandomization,
-          aiCaptionVariations,
-          variationStyle,
-          hashtagRotation,
-          hashtagSets,
-          emojiRandomization,
-          ctaRotation,
-          selectedCTAs,
-          showPlatformLimits,
-        },
-      };
-
-      console.log('Sending campaign data:', campaignData);
-
-      const response = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(campaignData),
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      const result = await response.json().catch(() => ({ error: 'Failed to parse response' }));
-      console.log('Response result:', result);
-
-      if (!response.ok) {
-        const errorMessage = result?.error || `Failed to create campaign (Status: ${response.status})`;
-        console.error('Campaign creation failed:', errorMessage);
-        throw new Error(errorMessage);
-      }
-      
-      setToast({ 
-        message: `Campaign launched! ${result.postsCreated} posts scheduled.`, 
-        tone: "success" 
-      });
+      // TODO: replace with real API call
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setToast({ message: `Campaign launched! ${campaignType === "repetitive" ? grandTotalPosts : totalPosts} posts scheduled.`, tone: "success" });
       setReviewOpen(false);
-      
-      // Redirect to campaigns page after successful creation
-      setTimeout(() => {
-        window.location.href = '/campaigns';
-      }, 1500);
-      
+      // TODO: replace with router push to campaign detail
     } catch (error) {
-      console.error('Error creating campaign:', error);
-      setToast({ 
-        message: "Something went wrong launching the campaign. Please try again.", 
-        tone: "error" 
-      });
+      setToast({ message: "Something went wrong launching the campaign.", tone: "error" });
     } finally {
       setLaunching(false);
-    }
-  };
-
-  const handleSaveAsDraft = async () => {
-    try {
-      // Validate required fields for draft
-      if (selectedClips.size === 0) {
-        throw new Error('Please select at least one clip to save as draft');
-      }
-      if (selectedAccounts.size === 0) {
-        throw new Error('Please select at least one account to save as draft');
-      }
-
-      // Prepare campaign data for draft
-      const campaignData = {
-        name: campaignName.trim() || `Draft Campaign ${new Date().toLocaleDateString()}`,
-        clipIds: Array.from(selectedClips),
-        accountIds: Array.from(selectedAccounts),
-        scheduleType: 'draft',
-        scheduledAt: null,
-        frequency: 'daily',
-        settings: {
-          campaignType,
-          postsPerDay: customPostsPerDay,
-          timingRandomization,
-          aiCaptionVariations,
-          variationStyle,
-          hashtagRotation,
-          hashtagSets,
-          emojiRandomization,
-          ctaRotation,
-          selectedCTAs,
-          showPlatformLimits,
-        },
-      };
-
-      const response = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(campaignData),
-      });
-
-      const result = await response.json().catch(() => ({ error: 'Failed to parse response' }));
-
-      if (!response.ok) {
-        const errorMessage = result?.error || 'Failed to save draft';
-        throw new Error(errorMessage);
-      }
-
-      setToast({ 
-        message: "Campaign saved as draft successfully!", 
-        tone: "success" 
-      });
-      
-      // Redirect to campaigns page after successful save
-      setTimeout(() => {
-        window.location.href = '/campaigns';
-      }, 1500);
-      
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      setToast({ 
-        message: "Something went wrong saving the draft. Please try again.", 
-        tone: "error" 
-      });
     }
   };
 
   const resetToast = () => setToast(null);
 
   return (
-    <div className="min-h-screen text-white" style={{ background: '#0a0a0a' }}>
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
       {toast && (
         <div
           role="status"
@@ -898,6 +767,18 @@ export default function CampaignBuilder() {
               </p>
             </div>
           </div>
+          <div className="flex w-full flex-col gap-2 lg:w-80">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-zinc-500">
+              <span>Progress</span>
+              <span>{progressPercentage}% Complete</span>
+            </div>
+            <div className="h-2 rounded-full bg-black">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 transition-all duration-500"
+                style={{ width: `${Math.max(progressPercentage, 6)}%` }}
+              />
+            </div>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -909,11 +790,11 @@ export default function CampaignBuilder() {
                 value={campaignName}
                 onChange={(event) => setCampaignName(event.target.value)}
                 placeholder="e.g., Weekly Content Drop"
-                className="w-full rounded-lg border px-4 py-3 text-sm transition focus:outline-none text-white"
-                style={{
-                  background: '#101010',
-                  borderColor: campaignNameError ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.08)'
-                }}
+                className={clsx(
+                  "w-full rounded-lg border px-4 py-3 text-sm transition focus:border-cyan-400 focus:outline-none",
+                  "bg-black/60",
+                  campaignNameError ? "border-red-500/60" : "border-white/20"
+                )}
               />
               {campaignNameError && (
                 <p className="mt-2 flex items-center gap-2 text-xs text-red-400">
@@ -923,202 +804,8 @@ export default function CampaignBuilder() {
               )}
             </div>
 
-
-            {/* Section 0: Campaign Objective */}
-            <section id="section-0" className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-              <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(0)}>
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold">Campaign Objective</h2>
-                  <p className="text-sm text-zinc-400">Define your campaign strategy and posting frequency.</p>
-                </div>
-                <button
-                  type="button"
-                  className="ml-4 text-zinc-400 hover:text-zinc-200 transition"
-                  onClick={(e) => { e.stopPropagation(); toggleSection(0); }}
-                >
-                  <ChevronDown className={clsx("h-5 w-5 transition-transform", collapsedSections.has(0) && "rotate-180")} />
-                </button>
-              </header>
-              {!collapsedSections.has(0) && (
-                <div className="space-y-6 mt-6">
-                  {/* Campaign Type */}
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-zinc-200 mb-2">
-                      Campaign Type
-                      <Info className="h-4 w-4 text-zinc-400 cursor-help" />
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={campaignType}
-                        onChange={(e) => setCampaignType(e.target.value as CampaignType)}
-                        className="w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-white focus:outline-none cursor-pointer"
-                        style={{
-                          background: '#101010',
-                          borderColor: 'rgba(255,255,255,0.08)'
-                        }}
-                      >
-                        <option value="repetitive">⭐ Repetitive (Recommended) - Daily auto-repurpose for continuous growth</option>
-                        <option value="one-time">One-Time Drop - Post clips once and finish</option>
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Repetitive Campaign Settings */}
-                  {campaignType === "repetitive" && (
-                    <div className="space-y-6 border-t border-white/10 pt-6">
-                      {/* Daily Reposts */}
-                      <div>
-                        <label className="text-sm font-medium text-zinc-200 block mb-3">
-                          Daily Reposts <span className="text-zinc-500 font-normal">(Per account)</span>
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={customPostsPerDay === 1 || customPostsPerDay <= 4 ? "1-4" :
-                                   customPostsPerDay <= 10 ? "5-10" :
-                                   customPostsPerDay <= 15 ? "10-15" :
-                                   customPostsPerDay <= 20 ? "15-20" : "custom"}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              if (value === "1-4") setCustomPostsPerDay(2);
-                              else if (value === "5-10") setCustomPostsPerDay(7);
-                              else if (value === "10-15") setCustomPostsPerDay(12);
-                              else if (value === "15-20") setCustomPostsPerDay(17);
-                            }}
-                            className="w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-white focus:outline-none cursor-pointer"
-                            style={{
-                              background: '#101010',
-                              borderColor: 'rgba(255,255,255,0.08)'
-                            }}
-                          >
-                            <option value="1-4">1-4 posts/day (Good for starting out)</option>
-                            <option value="5-10">5-10 posts/day (Ideal for growth/scale)</option>
-                            <option value="10-15">10-15 posts/day (Scaling but a little risky)</option>
-                            <option value="15-20">15-20 posts/day (Risky of getting flagged)</option>
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                        </div>
-                        
-                        {/* Fine-tune control */}
-                        <div className="mt-4 flex items-center gap-4">
-                          <button
-                            type="button"
-                            onClick={() => setCustomPostsPerDay(Math.max(1, customPostsPerDay - 1))}
-                            className="flex items-center justify-center w-10 h-10 rounded-lg border text-white transition hover:opacity-80"
-                            style={{
-                              borderColor: 'rgba(229,229,229,0.3)',
-                              background: 'rgba(229,229,229,0.1)'
-                            }}
-                          >
-                            −
-                          </button>
-                          <div className="flex-1">
-                            <input
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={customPostsPerDay}
-                              onChange={(e) => setCustomPostsPerDay(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
-                              className="w-full text-center px-4 py-2.5 rounded-lg border text-white text-lg font-semibold focus:outline-none"
-                              style={{
-                                background: '#101010',
-                                borderColor: 'rgba(255,255,255,0.08)'
-                              }}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setCustomPostsPerDay(Math.min(20, customPostsPerDay + 1))}
-                            className="flex items-center justify-center w-10 h-10 rounded-lg border text-white transition hover:opacity-80"
-                            style={{
-                              borderColor: 'rgba(229,229,229,0.3)',
-                              background: 'rgba(229,229,229,0.1)'
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
-                        <p className="text-xs text-zinc-400 mt-2 text-center">
-                          This will result in{" "}
-                          <span className="font-semibold" style={{ color: '#e5e5e5' }}>
-                            {(() => {
-                              const startDateObj = new Date(startDate);
-                              const endDateObj = new Date(endDate);
-                              const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
-                              const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
-                              const accounts = activeAccounts.length || 1;
-                              return (customPostsPerDay * days * accounts).toLocaleString();
-                            })()}
-                          </span>{" "}
-                          total posts over the campaign
-                        </p>
-                      </div>
-
-                      {/* Auto-Repurpose Method */}
-                      <div className="border-t border-white/10 pt-6">
-                        <label className="flex items-center gap-2 text-sm font-medium text-zinc-200 mb-2">
-                          Auto-Repurpose Method
-                          <Info className="h-4 w-4 text-zinc-400 cursor-help" />
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={variationMethod}
-                            onChange={(e) => setVariationMethod(e.target.value as VariationMethod)}
-                            className="w-full appearance-none rounded-xl border px-4 py-3 pr-10 text-white focus:outline-none cursor-pointer"
-                            style={{
-                              background: '#101010',
-                              borderColor: 'rgba(255,255,255,0.08)'
-                            }}
-                          >
-                            <option value="ai-powered">✨ AI-Powered (Recommended) - Automatic smart variations for each repost</option>
-                            <option value="manual">Manual - Repost the exact same content</option>
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                        </div>
-
-                        {/* Timing Randomization */}
-                        {variationMethod === "ai-powered" && (
-                          <div className="mt-4">
-                            <div className="flex items-center justify-between p-4 rounded-xl border"
-                              style={{
-                                background: '#101010',
-                                borderColor: 'rgba(255,255,255,0.08)'
-                              }}
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-medium text-white">Timing Randomization</p>
-                                  <Info className="h-4 w-4 text-zinc-400 cursor-help" />
-                                </div>
-                                <p className="text-xs text-zinc-400 mt-1">Add ±10-20% time variance to mimic human posting patterns</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setTimingRandomization(!timingRandomization)}
-                                className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ml-4"
-                                style={{
-                                  background: timingRandomization ? '#d4d4d4' : '#3f3f46'
-                                }}
-                              >
-                                <span
-                                  className={clsx(
-                                    "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                                    timingRandomization ? "translate-x-5" : "translate-x-0"
-                                  )}
-                                />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-
             {/* Section 1: Select Content */}
-            <section id="section-1" className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <section id="section-1" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
               <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(1)}>
                 <div className="flex-1">
                   <h2 className="text-lg font-semibold">Select Content</h2>
@@ -1141,11 +828,7 @@ export default function CampaignBuilder() {
                   <button
                     type="button"
                   onClick={() => setClipSelectionOpen(true)}
-                  className="w-full flex items-center justify-center gap-3 rounded-xl border px-6 py-12 text-center transition hover:opacity-80"
-                  style={{
-                    background: '#101010',
-                    borderColor: 'rgba(255,255,255,0.08)'
-                  }}
+                  className="w-full flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/25 bg-black/40 px-6 py-12 text-center transition hover:border-cyan-400/50 hover:bg-black/60"
                 >
                   <Plus className="h-6 w-6 text-zinc-400" />
                   <div>
@@ -1160,8 +843,7 @@ export default function CampaignBuilder() {
                     <button
                       type="button"
                       onClick={() => setClipSelectionOpen(true)}
-                      className="text-sm font-semibold transition hover:opacity-80"
-                      style={{ color: '#e5e5e5' }}
+                      className="text-sm font-semibold text-cyan-300 hover:text-cyan-100 transition"
                     >
                       Edit Selection
                     </button>
@@ -1222,7 +904,7 @@ export default function CampaignBuilder() {
             </section>
 
             {/* Section 2: Placements */}
-            <section id="section-2" className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <section id="section-2" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
               <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(2)}>
                 <div className="flex-1">
                   <h2 className="text-lg font-semibold">Placements</h2>
@@ -1239,7 +921,7 @@ export default function CampaignBuilder() {
               {!collapsedSections.has(2) && (
               <div className="mt-6">
 
-              {accounts.length === 0 ? (
+              {mockAccounts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/20 bg-black/60/40 p-10 text-center">
                   <AlertTriangle className="h-10 w-10 text-zinc-500" />
                   <p className="text-sm text-zinc-300">No accounts connected</p>
@@ -1272,24 +954,20 @@ export default function CampaignBuilder() {
                                 disabled={!hasAccounts}
                               className={clsx(
                                   "flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition",
-                                  !hasAccounts && "cursor-not-allowed border-dashed opacity-60",
-                                  hasAccounts && isActive && "text-white",
-                                  hasAccounts && !isActive && "hover:opacity-80"
+                                "bg-black/60",
+                                  !hasAccounts && "cursor-not-allowed border-dashed border-white/25 opacity-60",
+                                  hasAccounts && isActive && "border-cyan-400/80 bg-cyan-500/10 text-white",
+                                  hasAccounts && !isActive && "border-white/20 hover:border-cyan-400/40"
                                 )}
-                              style={{
-                                background: isActive ? 'rgba(229,229,229,0.1)' : '#101010',
-                                borderColor: !hasAccounts ? 'rgba(255,255,255,0.15)' : (isActive ? 'rgba(229,229,229,0.4)' : 'rgba(255,255,255,0.08)')
-                              }}
                               >
                                 <span
-                                  className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border transition"
-                                  style={{
-                                    borderColor: isActive ? '#e5e5e5' : 'rgba(255,255,255,0.25)',
-                                    background: isActive ? 'rgba(229,229,229,0.1)' : 'transparent'
-                                  }}
+                                  className={clsx(
+                                    "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border transition",
+                                    isActive ? "border-cyan-400 bg-cyan-500/10" : "border-white/25"
+                                  )}
                                 >
                                   {isActive && (
-                                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#e5e5e5' }} />
+                                    <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
                                   )}
                                 </span>
                                 <span className={clsx("h-2.5 w-2.5 flex-shrink-0 rounded-full", PLATFORM_META[platform].dotClass)} />
@@ -1311,12 +989,7 @@ export default function CampaignBuilder() {
                           <p className="text-xs text-zinc-400">Choose specific accounts from your selected platforms</p>
                         </div>
                         {selectedPlatforms.size === 0 ? (
-                          <div className="rounded-xl border border-dashed px-5 py-6 text-center"
-                            style={{
-                              background: '#101010',
-                              borderColor: 'rgba(255,255,255,0.15)'
-                            }}
-                          >
+                          <div className="rounded-xl border border-dashed border-white/25 bg-black/60 px-5 py-6 text-center">
                             <p className="text-sm font-medium text-zinc-300 mb-1">No platforms selected</p>
                             <p className="text-xs text-zinc-500">Select at least one platform above to choose accounts</p>
                           </div>
@@ -1331,11 +1004,7 @@ export default function CampaignBuilder() {
                           return (
                             <div
                               key={`${platform}-empty`}
-                                    className="rounded-xl border border-dashed p-4 text-sm text-zinc-400"
-                                    style={{
-                                      background: '#101010',
-                                      borderColor: 'rgba(255,255,255,0.15)'
-                                    }}
+                                    className="rounded-xl border border-dashed border-white/25 bg-black/60 p-4 text-sm text-zinc-400"
                                   >
                                     <div className="flex items-center gap-2">
                                       <AlertTriangle className="h-4 w-4 text-zinc-500" />
@@ -1346,12 +1015,7 @@ export default function CampaignBuilder() {
                         }
 
                         return (
-                                <div key={platform} className="rounded-xl border overflow-hidden"
-                                  style={{
-                                    background: '#101010',
-                                    borderColor: 'rgba(255,255,255,0.08)'
-                                  }}
-                                >
+                                <div key={platform} className="rounded-xl border border-white/20 bg-black/60 overflow-hidden">
                                   <button
                                     type="button"
                                     onClick={() => setOpenAccountDropdown(isOpen ? null : platform)}
@@ -1395,13 +1059,7 @@ export default function CampaignBuilder() {
                                               return next;
                                             });
                                           }}
-                                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition hover:opacity-80"
-                                          style={{
-                                            background: 'rgba(229,229,229,0.1)',
-                                            borderColor: 'rgba(229,229,229,0.3)',
-                                            color: '#e5e5e5',
-                                            border: '1px solid'
-                                          }}
+                                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-400/30 hover:bg-cyan-500/15 hover:border-cyan-400/50 transition"
                                         >
                                           {accounts.every(acc => selectedAccounts.has(acc.id)) ? (
                                             <>
@@ -1422,27 +1080,22 @@ export default function CampaignBuilder() {
                                 return (
                                   <label
                                     key={account.id}
-                                    className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-sm transition"
-                                    style={{
-                                      background: checked ? 'rgba(229,229,229,0.1)' : undefined
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      if (!checked) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      if (!checked) e.currentTarget.style.background = '';
-                                    }}
+                                    className={clsx(
+                                                "flex cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-sm transition",
+                                      checked
+                                                  ? "bg-cyan-500/10"
+                                                  : "hover:bg-white/[0.03]"
+                                    )}
                                   >
                                     <div className="flex items-center gap-3">
                                       <span
-                                        className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border"
-                                        style={{
-                                          borderColor: checked ? '#e5e5e5' : 'rgba(255,255,255,0.25)',
-                                          background: checked ? 'rgba(229,229,229,0.1)' : 'transparent'
-                                        }}
+                                        className={clsx(
+                                                    "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border",
+                                                    checked ? "border-cyan-400 bg-cyan-500/10" : "border-white/25"
+                                                  )}
                                                 >
                                                   {checked && (
-                                                    <span className="h-2 w-2 rounded-sm" style={{ background: '#e5e5e5' }} />
+                                                    <span className="h-2 w-2 rounded-sm bg-cyan-400" />
                                                   )}
                                       </span>
                                       <div>
@@ -1484,7 +1137,7 @@ export default function CampaignBuilder() {
             </section>
 
             {/* Section 3: Post Captions & Details */}
-            <section id="section-3" className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <section id="section-3" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
               <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(3)}>
                 <div className="flex-1">
                   <h2 className="text-lg font-semibold">Post Captions &amp; Details</h2>
@@ -1522,8 +1175,7 @@ export default function CampaignBuilder() {
                         <button
                           type="button"
                           onClick={() => setShowPlatformLimits(!showPlatformLimits)}
-                          className="text-xs transition"
-                          style={{ color: '#e5e5e5' }}
+                          className="text-xs text-cyan-400 transition hover:text-cyan-200"
                         >
                           Platform limits {showPlatformLimits ? "▲" : "▼"}
                         </button>
@@ -1531,12 +1183,7 @@ export default function CampaignBuilder() {
                     </div>
 
                     {showPlatformLimits && (
-                      <div className="mb-3 space-y-1 rounded-lg border p-3 text-xs"
-                        style={{
-                          background: '#101010',
-                          borderColor: 'rgba(255,255,255,0.08)'
-                        }}
-                      >
+                      <div className="mb-3 space-y-1 rounded-lg border border-white/20 bg-black/60 p-3 text-xs">
                         <p className="mb-2 font-medium text-zinc-300">Character Limits:</p>
                         <p className="text-zinc-400">• TikTok: 2,200 chars</p>
                         <p className="text-zinc-400">• YouTube: 5,000 chars</p>
@@ -1549,11 +1196,7 @@ export default function CampaignBuilder() {
                       value={captionTemplate}
                       onChange={(e) => setCaptionTemplate(e.target.value)}
                       placeholder="Check this out! 🔥"
-                      className="min-h-[120px] w-full resize-y rounded-lg border px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none"
-                      style={{
-                        background: '#101010',
-                        borderColor: 'rgba(255,255,255,0.08)'
-                      }}
+                      className="min-h-[120px] w-full resize-y rounded-lg border border-white/20 bg-black/60 px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:border-cyan-400 focus:outline-none"
                     />
                   </div>
 
@@ -1564,12 +1207,11 @@ export default function CampaignBuilder() {
                         type="checkbox"
                         checked={aiCaptionVariations}
                         onChange={(e) => setAiCaptionVariations(e.target.checked)}
-                        className="mt-0.5 h-5 w-5 rounded border-white/20 bg-black focus:ring-0"
-                        style={{ accentColor: '#e5e5e5' }}
+                        className="mt-0.5 h-5 w-5 rounded border-white/20 bg-black text-cyan-400 focus:ring-cyan-300"
                       />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-zinc-200">
-                          AI Caption Variations <span className="text-xs" style={{ color: '#e5e5e5' }}>(Recommended)</span>
+                          AI Caption Variations <span className="text-cyan-400 text-xs">(Recommended)</span>
                         </p>
                         <p className="text-xs text-zinc-400 mt-1">Generate unique captions for each repost</p>
 
@@ -1580,11 +1222,7 @@ export default function CampaignBuilder() {
                               <select
                                 value={variationStyle}
                                 onChange={(e) => setVariationStyle(e.target.value as any)}
-                                className="w-full appearance-none rounded-lg border px-4 py-2.5 text-sm text-white focus:outline-none"
-                                style={{
-                                  background: '#101010',
-                                  borderColor: 'rgba(255,255,255,0.08)'
-                                }}
+                                className="w-full appearance-none rounded-lg border border-white/20 bg-black/60 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                               >
                                 <option value="similar">Similar Meaning (keeps your message, changes wording)</option>
                                 <option value="hooks">Different Hooks (changes opening, keeps body)</option>
@@ -1593,12 +1231,7 @@ export default function CampaignBuilder() {
                               </select>
                             </div>
 
-                            <div className="p-4 rounded-lg border"
-                              style={{
-                                background: '#101010',
-                                borderColor: 'rgba(255,255,255,0.08)'
-                              }}
-                            >
+                            <div className="p-4 rounded-lg bg-black/40 border border-white/20">
                               <p className="text-xs font-medium text-zinc-400 mb-3">Preview Examples:</p>
                               <div className="space-y-2">
                                 <div className="text-xs">
@@ -1618,12 +1251,7 @@ export default function CampaignBuilder() {
                       </div>
                     </label>
 
-                    <div className="rounded-lg border px-4 py-3"
-                      style={{
-                        background: '#101010',
-                        borderColor: 'rgba(255,255,255,0.08)'
-                      }}
-                    >
+                    <div className="rounded-lg border border-white/20 bg-black/40 px-4 py-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs font-medium text-zinc-300">Advanced options</p>
@@ -1759,12 +1387,7 @@ export default function CampaignBuilder() {
                   </div>
 
                   {/* Preview */}
-                  <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border p-5 sm:flex-row sm:items-center"
-                    style={{
-                      background: '#101010',
-                      borderColor: 'rgba(255,255,255,0.08)'
-                    }}
-                  >
+                  <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-white/20 bg-black p-5 sm:flex-row sm:items-center">
                     <div>
                       <h3 className="text-sm font-semibold text-zinc-200">Preview</h3>
                       <p className="text-xs text-zinc-400">Open a quick look at your captions in the right column.</p>
@@ -1772,12 +1395,7 @@ export default function CampaignBuilder() {
                     <button
                       type="button"
                       onClick={() => setShowCaptionPreview((prev) => !prev)}
-                      className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium transition hover:opacity-80"
-                      style={{
-                        borderColor: 'rgba(229,229,229,0.5)',
-                        background: 'rgba(229,229,229,0.15)',
-                        color: '#fafafa'
-                      }}
+                      className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-200 transition hover:border-cyan-400 hover:text-cyan-100"
                     >
                       {showCaptionPreview ? "Hide Preview" : "Show Preview"}
                     </button>
@@ -1787,7 +1405,7 @@ export default function CampaignBuilder() {
             </section>
 
             {/* Section 4: Schedule & Settings */}
-            <section id="section-4" className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <section id="section-4" className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
               <header className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection(4)}>
                 <div className="flex-1">
                   <h2 className="text-lg font-semibold">Schedule &amp; Settings</h2>
@@ -1803,20 +1421,34 @@ export default function CampaignBuilder() {
               </header>
               {!collapsedSections.has(4) && (
                 <div className="space-y-6 mt-6">
-                {/* Posting Schedule */}
+                {/* Campaign Type - Dropdown */}
                 <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-200 mb-2">
+                    Campaign Type
+                    <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={campaignType}
+                      onChange={(e) => setCampaignType(e.target.value as CampaignType)}
+                      className="w-full appearance-none rounded-xl border border-white/20 bg-black px-4 py-3 pr-10 text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
+                    >
+                      <option value="repetitive">⭐ Repetitive (Recommended) - Daily auto-repurpose for continuous growth</option>
+                      <option value="one-time">One-Time Drop - Post clips once and finish</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Posting Schedule - Simplified */}
+                <div className="border-t border-white/10 pt-6">
                   <h3 className="text-sm font-medium text-zinc-200 mb-4">Schedule Campaign</h3>
                   
                   {/* Start Date & Time - Full Width */}
                   <div className="mb-4">
                     <label className="text-xs font-medium text-zinc-400 block mb-2">Start date</label>
                     <div className="flex items-center gap-3 w-full">
-                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-white flex-1"
-                        style={{
-                          background: '#101010',
-                          borderColor: 'rgba(255,255,255,0.08)'
-                        }}
-                      >
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
                         <Calendar className="h-4 w-4 text-zinc-400" />
                         <input
                           type="date"
@@ -1825,12 +1457,7 @@ export default function CampaignBuilder() {
                           className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
                         />
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-white flex-1"
-                        style={{
-                          background: '#101010',
-                          borderColor: 'rgba(255,255,255,0.08)'
-                        }}
-                      >
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
                         <Clock className="h-4 w-4 text-zinc-400" />
                         <input
                           type="time"
@@ -1849,12 +1476,7 @@ export default function CampaignBuilder() {
                   <div>
                     <label className="text-xs font-medium text-zinc-400 block mb-2">End date</label>
                     <div className="flex items-center gap-3 w-full">
-                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-white flex-1"
-                        style={{
-                          background: '#101010',
-                          borderColor: 'rgba(255,255,255,0.08)'
-                        }}
-                      >
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
                         <Calendar className="h-4 w-4 text-zinc-400" />
                         <input
                           type="date"
@@ -1863,12 +1485,7 @@ export default function CampaignBuilder() {
                           className="bg-transparent border-none text-white focus:outline-none cursor-pointer flex-1"
                         />
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-white flex-1"
-                        style={{
-                          background: '#101010',
-                          borderColor: 'rgba(255,255,255,0.08)'
-                        }}
-                      >
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-black/60 text-white flex-1">
                         <Clock className="h-4 w-4 text-zinc-400" />
                         <input
                           type="time"
@@ -1950,11 +1567,11 @@ export default function CampaignBuilder() {
           {/* Sidebar */}
           <aside className="sticky top-6 self-start space-y-6">
             {/* Wizard Stepper Navigation */}
-            <div className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <div className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-white mb-4">Campaign Steps</h3>
               <nav className="space-y-1">
                 {[
-                  { id: 0, title: 'Campaign Objective', description: 'Define strategy & frequency' },
+                  { id: 0, title: 'Campaign Name', description: 'Name your campaign' },
                   { id: 1, title: 'Select Content', description: 'Choose clips' },
                   { id: 2, title: 'Placements', description: 'Pick platforms & accounts' },
                   { id: 3, title: 'Post Captions', description: 'Customize captions' },
@@ -1970,28 +1587,21 @@ export default function CampaignBuilder() {
                       type="button"
                       onClick={() => scrollToSection(step.id)}
                       className={clsx(
-                        "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all border",
+                        "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
                         isActive 
-                          ? "" 
-                          : "border-transparent hover:bg-white/5"
+                          ? "bg-cyan-500/10 border border-cyan-400/30" 
+                          : "hover:bg-white/5 border border-transparent"
                       )}
-                      style={{
-                        background: isActive ? 'rgba(229,229,229,0.1)' : undefined,
-                        borderColor: isActive ? 'rgba(229,229,229,0.3)' : undefined
-                      }}
                     >
                       {/* Step Number / Check Icon */}
-                      <div 
-                        className={clsx(
-                          "flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-semibold transition-all",
-                          !isCompleted && !isActive && "border-white/20 text-zinc-400"
-                        )}
-                        style={{
-                          borderColor: isCompleted ? '#e5e5e5' : (isActive ? '#e5e5e5' : undefined),
-                          background: isCompleted ? 'rgba(229,229,229,0.1)' : (isActive ? 'rgba(229,229,229,0.1)' : undefined),
-                          color: (isCompleted || isActive) ? '#e5e5e5' : undefined
-                        }}
-                      >
+                      <div className={clsx(
+                        "flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-semibold transition-all",
+                        isCompleted 
+                          ? "border-green-400 bg-green-400/10 text-green-400"
+                          : isActive
+                            ? "border-cyan-400 bg-cyan-400/10 text-cyan-400"
+                            : "border-white/20 text-zinc-400"
+                      )}>
                         {isCompleted ? (
                           <CheckCircle2 className="h-4 w-4" />
                         ) : (
@@ -2009,7 +1619,7 @@ export default function CampaignBuilder() {
                             {step.title}
                           </p>
                           {isExpanded && (
-                            <ChevronDown className="h-3 w-3" style={{ color: '#e5e5e5' }} />
+                            <ChevronDown className="h-3 w-3 text-cyan-400" />
                           )}
                         </div>
                         <p className="text-xs text-zinc-500 mt-0.5">{step.description}</p>
@@ -2021,7 +1631,7 @@ export default function CampaignBuilder() {
             </div>
 
             {showCaptionPreview && (
-              <div className="rounded-2xl border p-6 shadow-2xl backdrop-blur" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+              <div className="rounded-2xl border border-white/20 bg-black p-6 shadow-2xl shadow-black/30 backdrop-blur">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold">Post Preview</h2>
@@ -2193,16 +1803,10 @@ export default function CampaignBuilder() {
                   )}
                 </div>
             )}
-            <div className="rounded-2xl border p-6 shadow-2xl backdrop-blur"
-              style={{
-                background: '#171717',
-                borderColor: 'rgba(255,255,255,0.08)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-              }}
-            >
+            <div className="rounded-2xl border border-white/20 bg-black/70 p-6 shadow-2xl shadow-black/30 backdrop-blur">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold">Campaign Summary</h2>
-                <div className="mt-2 h-1 rounded-full" style={{ background: '#e5e5e5' }} />
+                <div className="mt-2 h-1 rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-cyan-400" />
               </div>
 
               <div className="space-y-6 text-sm">
@@ -2355,19 +1959,17 @@ export default function CampaignBuilder() {
                   type="button"
                   onClick={handleRequestReview}
                   disabled={launchDisabled}
-                  className="h-12 w-full rounded-xl border px-6 text-sm font-semibold transition"
-                  style={{
-                    background: launchDisabled ? '#171717' : '#e5e5e5',
-                    borderColor: launchDisabled ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    color: launchDisabled ? '#a1a1a1' : '#171717',
-                    cursor: launchDisabled ? 'not-allowed' : 'pointer'
-                  }}
+                  className={clsx(
+                    "h-12 w-full rounded-xl border px-6 text-sm font-semibold transition",
+                    launchDisabled
+                      ? "cursor-not-allowed border-white/20 bg-black text-zinc-500"
+                      : "border-transparent bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 text-black shadow-[0_12px_40px_rgba(58,199,255,0.4)] hover:translate-y-[-1px]"
+                  )}
                 >
                   Review &amp; Launch Campaign
                 </button>
                 <button
                   type="button"
-                  onClick={handleSaveAsDraft}
                   className="h-11 w-full rounded-xl border border-white/20 bg-black/60 text-sm font-semibold text-zinc-300 transition hover:border-white/30"
                 >
                   Save as Draft
@@ -2399,12 +2001,7 @@ export default function CampaignBuilder() {
                         setSelectedClips(new Set(filteredClips.map(c => c.id)));
                       }
                     }}
-                    className="px-4 py-2 rounded-lg border text-sm font-semibold transition hover:opacity-80"
-                    style={{
-                      borderColor: 'rgba(229,229,229,0.4)',
-                      background: 'rgba(229,229,229,0.1)',
-                      color: '#e5e5e5'
-                    }}
+                    className="px-4 py-2 rounded-lg border border-cyan-400/40 bg-cyan-500/10 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/15 hover:border-cyan-400/60 transition"
                   >
                     {selectedClips.size === filteredClips.length && filteredClips.length > 0 ? 'Deselect All' : 'Select All'}
                   </button>
@@ -2471,25 +2068,11 @@ export default function CampaignBuilder() {
                         className={clsx(
                           "group relative overflow-hidden rounded-3xl border bg-white/[0.04] text-white transition-all duration-300 backdrop-blur flex flex-col cursor-pointer",
                           isSelected
-                            ? "shadow-[0_35px_90px_-45px_rgba(229,229,229,0.3)] ring-2"
-                            : "border-white/20 shadow-[0_30px_80px_-55px_rgba(0,0,0,0.85)] hover:-translate-y-2"
+                            ? "border-cyan-400/60 shadow-[0_35px_90px_-45px_rgba(56,189,248,0.6)] ring-2 ring-cyan-400/40"
+                            : "border-white/20 shadow-[0_30px_80px_-55px_rgba(0,0,0,0.85)] hover:-translate-y-2 hover:border-cyan-400/40 hover:shadow-[0_40px_110px_-60px_rgba(56,189,248,0.55)]"
                         )}
                         style={{
                           animation: `fadeSlideUp 0.45s ease-out ${index * 0.05}s both`,
-                          borderColor: isSelected ? 'rgba(229,229,229,0.6)' : undefined,
-                          boxShadow: isSelected ? '0 35px 90px -45px rgba(229,229,229,0.3), 0 0 0 2px rgba(229,229,229,0.4)' : undefined
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = 'rgba(229,229,229,0.4)';
-                            e.currentTarget.style.boxShadow = '0 40px 110px -60px rgba(229,229,229,0.25)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = '';
-                            e.currentTarget.style.boxShadow = '';
-                          }
                         }}
                       >
                         <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/[0.05] via-transparent to-transparent opacity-90" />
@@ -2595,11 +2178,7 @@ export default function CampaignBuilder() {
                 <p className="text-sm text-zinc-400">{selectedClips.size} clip{selectedClips.size !== 1 ? 's' : ''} selected</p>
                 <button
                   onClick={() => setClipSelectionOpen(false)}
-                  className="px-5 py-2.5 font-semibold rounded-xl hover:opacity-90 transition"
-                  style={{
-                    background: '#e5e5e5',
-                    color: '#171717'
-                  }}
+                  className="px-5 py-2.5 bg-gradient-to-r from-cyan-400 via-sky-400 to-purple-500 text-black font-semibold rounded-xl hover:opacity-90 transition"
                 >
                   Done
                 </button>
@@ -2780,12 +2359,8 @@ export default function CampaignBuilder() {
                   "flex h-11 items-center justify-center rounded-xl px-6 text-sm font-semibold transition",
                   launching
                     ? "cursor-not-allowed border-white/20 bg-black text-zinc-500"
-                    : "border-transparent text-black hover:translate-y-[-1px]"
+                    : "border-transparent bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 text-black shadow-[0_10px_35px_rgba(59,200,255,0.35)] hover:translate-y-[-1px]"
                 )}
-                style={{
-                  background: launching ? undefined : '#e5e5e5',
-                  color: launching ? undefined : '#171717'
-                }}
               >
                 {launching ? (
                   <>

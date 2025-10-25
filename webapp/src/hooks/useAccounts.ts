@@ -19,86 +19,30 @@ export function useAccounts(platform?: string): { data: Account[]; loading: bool
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data for now - replace with real API call
-    setTimeout(() => {
-      const allAccounts: Account[] = [
-        {
-          id: '1',
-          platform: 'tiktok',
-          handle: '@scalepost_main',
-          status: 'active',
-          group: 'Main Brand',
-          tags: ['primary'],
-          lastSync: new Date(Date.now() - 5 * 60000).toISOString(),
-        },
-        {
-          id: '2',
-          platform: 'tiktok',
-          handle: '@scalepost_backup',
-          status: 'active',
-          group: 'Backups',
-          lastSync: new Date(Date.now() - 15 * 60000).toISOString(),
-        },
-        {
-          id: '3',
-          platform: 'tiktok',
-          handle: '@scalepost_test',
-          status: 'needs_reauth',
-          group: 'Testing',
-          lastSync: new Date(Date.now() - 2 * 24 * 60 * 60000).toISOString(),
-        },
-        {
-          id: '4',
-          platform: 'youtube',
-          handle: '@ScalepostOfficial',
-          status: 'active',
-          group: 'Main Brand',
-          tags: ['primary', 'shorts'],
-          lastSync: new Date(Date.now() - 10 * 60000).toISOString(),
-        },
-        {
-          id: '5',
-          platform: 'youtube',
-          handle: '@ScalepostClips',
-          status: 'active',
-          group: 'Main Brand',
-          lastSync: new Date(Date.now() - 20 * 60000).toISOString(),
-        },
-        {
-          id: '6',
-          platform: 'instagram',
-          handle: '@scalepost',
-          status: 'active',
-          group: 'Main Brand',
-          tags: ['primary', 'reels'],
-          lastSync: new Date(Date.now() - 8 * 60000).toISOString(),
-        },
-        {
-          id: '7',
-          platform: 'instagram',
-          handle: '@scalepost.tips',
-          status: 'rate_limited',
-          group: 'Content',
-          lastSync: new Date(Date.now() - 60 * 60000).toISOString(),
-        },
-        {
-          id: '8',
-          platform: 'x',
-          handle: '@scalepost',
-          status: 'active',
-          group: 'Main Brand',
-          tags: ['primary'],
-          lastSync: new Date(Date.now() - 3 * 60000).toISOString(),
-        },
-      ];
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch('/api/accounts');
+        if (!response.ok) {
+          throw new Error('Failed to fetch accounts');
+        }
+        
+        const result = await response.json();
+        const allAccounts: Account[] = result.accounts || [];
+        
+        const filtered = platform
+          ? allAccounts.filter((acc) => acc.platform === platform)
+          : allAccounts;
 
-      const filtered = platform
-        ? allAccounts.filter((acc) => acc.platform === platform)
-        : allAccounts;
+        setData(filtered);
+      } catch (error) {
+        console.error('Error fetching accounts:', error);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setData(filtered);
-      setLoading(false);
-    }, 300);
+    fetchAccounts();
   }, [platform]);
 
   return { data, loading };

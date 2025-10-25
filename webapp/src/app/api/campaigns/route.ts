@@ -24,24 +24,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create campaign
-    const [campaign] = await db
-      .insert(campaigns)
-      .values({
-        userId: 'anon',
-        name,
-        status: scheduleType === 'immediate' ? 'active' : 'draft',
-        targetPlatforms: '[]', // Will be populated from accounts
-        selectedAccounts: JSON.stringify(accountIds),
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        settings: JSON.stringify({
-          frequency,
-          ...settings,
-        }),
-      })
-      .returning();
-
-    // Get selected clips and accounts
+    // Get selected clips and accounts first to extract platforms
     const selectedClips = await db
       .select()
       .from(clips)
@@ -51,6 +34,41 @@ export async function POST(req: NextRequest) {
       .select()
       .from(accounts)
       .where(inArray(accounts.id, accountIds));
+
+    // Validate that we found the clips and accounts
+    if (selectedClips.length === 0) {
+      return NextResponse.json(
+        { error: 'No clips found with the provided IDs' },
+        { status: 400 }
+      );
+    }
+
+    if (selectedAccounts.length === 0) {
+      return NextResponse.json(
+        { error: 'No accounts found with the provided IDs' },
+        { status: 400 }
+      );
+    }
+
+    // Extract unique platforms from selected accounts
+    const uniquePlatforms = [...new Set(selectedAccounts.map(account => account.platform))];
+
+    // Create campaign
+    const [campaign] = await db
+      .insert(campaigns)
+      .values({
+        userId: 'anon',
+        name,
+        status: scheduleType === 'immediate' ? 'active' : 'draft',
+        targetPlatforms: uniquePlatforms, // Platforms from selected accounts
+        selectedAccounts: accountIds,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        settings: {
+          frequency,
+          ...settings,
+        },
+      })
+      .returning();
 
     // Create posts for each clip-account combination
     const postsToCreate = [];
@@ -94,10 +112,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Batch insert posts
-    const createdPosts = await db
-      .insert(posts)
-      .values(postsToCreate)
-      .returning();
+    let createdPosts = [];
+    if (postsToCreate.length > 0) {
+      createdPosts = await db
+        .insert(posts)
+        .values(postsToCreate)
+        .returning();
+    }
 
     // If immediate posting, trigger posting process
     if (scheduleType === 'immediate') {
@@ -114,8 +135,9 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Error creating campaign:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create campaign';
     return NextResponse.json(
-      { error: 'Failed to create campaign' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

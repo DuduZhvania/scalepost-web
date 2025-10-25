@@ -3,6 +3,8 @@
 import clsx from 'clsx';
 import { useMemo, useState } from 'react';
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -157,9 +159,12 @@ export function PerformanceChart({ data, range, onRangeChange }: PerformanceChar
     return (
       <div
         className={clsx(
-          'min-w-[200px] rounded-2xl border p-4 shadow-2xl backdrop-blur-xl transition-colors duration-200',
-          isLight ? 'border-gray-200 bg-white text-gray-800' : 'border-cyan-400/30 bg-slate-950/90 text-gray-200'
+          'min-w-[200px] rounded-xl border p-4 shadow-2xl transition-colors duration-200',
+          isLight ? 'border-gray-200 bg-white text-gray-800' : 'border-white/10 text-gray-200'
         )}
+        style={{
+          background: !isLight ? '#171717' : undefined
+        }}
       >
         <div
           className={clsx(
@@ -201,38 +206,49 @@ export function PerformanceChart({ data, range, onRangeChange }: PerformanceChar
     );
   };
 
-  const gradientTop = isLight ? 'rgba(99,102,241,0.14)' : 'rgba(56,189,248,0.25)';
-  const gradientBottom = isLight ? 'rgba(226,232,240,0)' : 'rgba(15,23,42,0)';
+  const gradientTop = isLight ? 'rgba(99,102,241,0.14)' : 'rgba(229,229,229,0.1)';
+  const gradientBottom = isLight ? 'rgba(226,232,240,0)' : 'rgba(229,229,229,0)';
 
   return (
-    <div className="animate-fade-in group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-all duration-300 hover:border-cyan-300/40 hover:shadow-md dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:shadow-[0_30px_120px_-60px_rgba(56,189,248,0.65)]">
-      <div className="pointer-events-none absolute inset-0 opacity-40 transition-opacity duration-300 group-hover:opacity-60 dark:opacity-70">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(168,85,247,0.12),transparent_60%)]" />
-      </div>
-
+    <div className="animate-fade-in group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-all duration-300" style={{
+      background: theme === 'dark' ? '#171717' : undefined,
+      borderColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : undefined,
+      boxShadow: theme === 'dark' ? '0 2px 8px rgba(0,0,0,0.3)' : undefined,
+      color: theme === 'dark' ? '#fafafa' : undefined
+    }}>
       <div className="relative mb-6 flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-bold">Performance Overview</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h3 className="text-lg font-bold" style={{
+            color: theme === 'dark' ? '#fafafa' : undefined
+          }}>Performance Overview</h3>
+          <p className="text-sm text-gray-500" style={{
+            color: theme === 'dark' ? '#a1a1a1' : undefined
+          }}>
             Real-time resonance across TikTok, YouTube, Instagram, and X
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 p-1 transition-colors duration-200 dark:border-white/10 dark:bg-white/[0.05]">
+        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-100 p-1.5 transition-colors duration-200" style={{
+          background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : undefined,
+          borderColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : undefined
+        }}>
           {RANGE_OPTIONS.map((option) => (
             <button
               key={option.value}
               onClick={() => onRangeChange(option.value)}
               className={clsx(
-                'rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all duration-300',
+                'rounded-lg px-4 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all duration-300',
                 range === option.value
                   ? isLight
                     ? 'bg-gray-900 text-white shadow'
-                    : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black shadow-lg shadow-cyan-500/40'
+                    : 'shadow'
                   : isLight
                     ? 'text-gray-500 hover:bg-white hover:text-gray-900'
-                    : 'text-gray-400 hover:bg-white/[0.08] hover:text-white'
+                    : ''
               )}
+              style={{
+                background: !isLight && range === option.value ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: !isLight && range === option.value ? '#fafafa' : (!isLight ? '#a1a1a1' : undefined)
+              }}
             >
               {option.label}
             </button>
@@ -242,64 +258,66 @@ export function PerformanceChart({ data, range, onRangeChange }: PerformanceChar
 
       <div className="relative h-[320px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 4, left: -10, bottom: 5 }}>
+          <AreaChart data={chartData} margin={{ top: 5, right: 4, left: -10, bottom: 5 }}>
             <defs>
               <linearGradient id="gridGlow" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor={gradientTop} />
                 <stop offset="100%" stopColor={gradientBottom} />
               </linearGradient>
+              {platforms
+                .filter((platform) => visiblePlatforms.has(platform.key))
+                .map((platform, index) => (
+                  <linearGradient key={platform.key} id={`area-${platform.key}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={isLight ? platform.color : 'rgba(229,229,229,0.5)'} stopOpacity={isLight ? 0.4 : 0.35} />
+                    <stop offset="95%" stopColor={isLight ? platform.color : 'rgba(229,229,229,0.1)'} stopOpacity={0} />
+                  </linearGradient>
+                ))}
             </defs>
-            <CartesianGrid stroke="url(#gridGlow)" strokeDasharray="3 12" opacity={0.6} />
+            <CartesianGrid stroke="url(#gridGlow)" strokeDasharray="3 12" opacity={isLight ? 0.6 : 0.3} />
             <XAxis
               dataKey="date"
               tickFormatter={formatXTick}
-              tick={{ fill: isLight ? '#6B7280' : '#9CA3AF', fontSize: 12 }}
+              tick={{ fill: isLight ? '#6B7280' : '#a1a1a1', fontSize: 12 }}
               interval={range === 'month' || range === 'all' ? 'preserveStartEnd' : 0}
-              axisLine={{ stroke: isLight ? '#E5E7EB' : '#1f2937' }}
-              tickLine={{ stroke: isLight ? '#E5E7EB' : '#1f2937' }}
+              axisLine={{ stroke: isLight ? '#E5E7EB' : 'rgba(229,229,229,0.1)' }}
+              tickLine={{ stroke: isLight ? '#E5E7EB' : 'rgba(229,229,229,0.1)' }}
             />
             <YAxis
               domain={[0, Math.ceil(maxValue / 1000) * 1000]}
               tickFormatter={formatValue}
-              tick={{ fill: isLight ? '#6B7280' : '#9CA3AF', fontSize: 12 }}
-              axisLine={{ stroke: isLight ? '#E5E7EB' : '#1f2937' }}
-              tickLine={{ stroke: isLight ? '#E5E7EB' : '#1f2937' }}
+              tick={{ fill: isLight ? '#6B7280' : '#a1a1a1', fontSize: 12 }}
+              axisLine={{ stroke: isLight ? '#E5E7EB' : 'rgba(229,229,229,0.1)' }}
+              tickLine={{ stroke: isLight ? '#E5E7EB' : 'rgba(229,229,229,0.1)' }}
               label={{
                 value: 'Views',
                 angle: -90,
                 position: 'insideLeft',
-                style: { fill: isLight ? '#6B7280' : '#94a3b8', fontSize: 12, textAnchor: 'middle' },
+                style: { fill: isLight ? '#6B7280' : '#a1a1a1', fontSize: 12, textAnchor: 'middle' },
                 offset: -10,
               }}
             />
             <Tooltip content={(props: TooltipContentProps<number, string>) => <CustomTooltip {...props} />} />
-            <Line
-              type="monotone"
-              dataKey="average"
-              stroke="#38bdf8"
-              strokeWidth={2}
-              strokeDasharray="6 10"
-              dot={false}
-              isAnimationActive={false}
-            />
             {platforms
               .filter((platform) => visiblePlatforms.has(platform.key))
               .map((platform) => (
-                <Line
+                <Area
                   key={platform.key}
                   type="monotone"
                   dataKey={platform.key}
-                  stroke={platform.color}
+                  stroke={isLight ? platform.color : "#e5e5e5"}
                   strokeWidth={2.8}
+                  fill={`url(#area-${platform.key})`}
                   dot={false}
-                  activeDot={{ r: 6, stroke: isLight ? '#fff' : '#0f172a', strokeWidth: 2 }}
+                  activeDot={{ r: 6, stroke: isLight ? '#fff' : '#171717', strokeWidth: 2 }}
                 />
               ))}
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="relative mt-6 flex flex-wrap gap-2 border-t border-gray-200 pt-6 transition-colors duration-200 dark:border-white/10">
+      <div className="relative mt-6 flex flex-wrap gap-2 border-t border-gray-200 pt-6 transition-colors duration-200" style={{
+        borderColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : undefined
+      }}>
         {platforms.map((platform) => (
           <button
             key={platform.key}
@@ -309,13 +327,18 @@ export function PerformanceChart({ data, range, onRangeChange }: PerformanceChar
               visiblePlatforms.has(platform.key)
                 ? isLight
                   ? 'border border-cyan-500 bg-cyan-100 text-cyan-700 shadow-sm'
-                  : 'border border-cyan-300/70 bg-cyan-400/20 text-white shadow-[0_0_18px_rgba(56,189,248,0.35)]'
+                  : 'shadow-sm'
                 : isLight
                   ? 'border border-gray-200 bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  : 'border border-transparent bg-white/[0.06] text-gray-400 hover:bg-white/[0.1] hover:text-white'
+                  : ''
             )}
+            style={{
+              background: !isLight && visiblePlatforms.has(platform.key) ? '#e5e5e5' : 'transparent',
+              borderColor: !isLight && visiblePlatforms.has(platform.key) ? '#e5e5e5' : 'transparent',
+              color: !isLight && visiblePlatforms.has(platform.key) ? '#171717' : (!isLight ? '#fafafa' : undefined)
+            }}
           >
-            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: platform.color }} />
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: isLight ? platform.color : '#e5e5e5' }} />
             {platform.label}
           </button>
         ))}

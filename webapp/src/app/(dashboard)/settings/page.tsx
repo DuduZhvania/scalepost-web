@@ -3,11 +3,17 @@
 
 import { useState } from 'react';
 import { User, Bell, CreditCard, Lock, Palette } from 'lucide-react';
+import { useTheme } from '@/components/ui/providers/ThemeProvider';
 
 type SettingsTab = 'profile' | 'notifications' | 'billing' | 'security' | 'preferences';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const { theme } = useTheme();
+  const pageBackground =
+    theme === 'dark'
+      ? '#000000'
+      : 'linear-gradient(145deg, #f4f2ff 0%, #eef2ff 50%, #f7f9ff 100%)';
 
   const tabs = [
     { id: 'profile' as const, name: 'Profile', icon: User },
@@ -18,7 +24,10 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
+    <div
+      className="min-h-screen text-gray-900 dark:text-white p-8"
+      style={{ background: pageBackground }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

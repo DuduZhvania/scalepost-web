@@ -31,7 +31,7 @@ export function PlatformAccordion({ platform, accounts, href }: PlatformAccordio
   ).length;
 
   return (
-    <div className="border border-zinc-800 rounded-lg overflow-hidden mb-4 bg-zinc-900">
+    <div className="border overflow-hidden mb-4 rounded-xl" style={{ background: '#171717', borderColor: 'rgba(255,255,255,0.08)' }}>
       {/* Header */}
       <div className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
         <Link
@@ -85,7 +85,7 @@ export function PlatformAccordion({ platform, accounts, href }: PlatformAccordio
 
       {/* Content */}
       {isExpanded && (
-        <div className="bg-black border-t border-zinc-800">
+        <div className="border-t" style={{ background: '#0a0a0a', borderColor: 'rgba(255,255,255,0.08)' }}>
           <AccountsTable accounts={accounts} />
         </div>
       )}
